@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+
+def algebraic_to_bitboard(pos):
+    bitboard = 0
+    if len(pos) == 2 and pos[0] in "abcdefgh" and pos[1] in "12345678":
+        file = ord(pos[0]) - ord('a')
+        rank = int(pos[1]) - 1
+        index = rank * 8 + file
+        bitboard |= (1 << index)
+    else:
+        print(f"Invalid position: {pos}")
+        exit(1)
+    return bitboard
+
+# Example usage
+import sys
+if len(sys.argv) == 2:
+    bitboard = algebraic_to_bitboard(sys.argv[1])
+    print(f"{bitboard:#018x}")
+else:
+    print(f"Usage: {sys.argv[0]} <algebraic_position>")
+    exit(1)
