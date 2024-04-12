@@ -17,6 +17,18 @@ impl std::ops::BitOr for Bitboard {
     }
 }
 
+impl std::ops::BitOrAssign for Bitboard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl std::ops::BitAndAssign for Bitboard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
 impl std::ops::BitAnd for Bitboard {
     type Output = Self;
 
@@ -145,6 +157,7 @@ const KNIGHT_MOVES: [(i8, i8); 8] = [
     (-2, -1),
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
     pub pawns: Bitboard,
     pub knights: Bitboard,
@@ -157,17 +170,100 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Self {
-        Self {
-            pawns: Bitboard(0),
-            knights: Bitboard(0),
-            bishops: Bitboard(0),
-            rooks: Bitboard(0),
-            queens: Bitboard(0),
-            kings: Bitboard(0),
-            white: Bitboard(0),
-            black: Bitboard(0),
+    const DEFAULT: Board = Board {
+        pawns: Bitboard(0),
+        knights: Bitboard(0),
+        bishops: Bitboard(0),
+        rooks: Bitboard(0),
+        queens: Bitboard(0),
+        kings: Bitboard(0),
+        white: Bitboard(0),
+        black: Bitboard(0),
+    };
+    pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+    pub fn new(fen: &str) -> Self {
+        let mut board = Self::DEFAULT;
+        let mut rank = 7;
+        let mut file = 0;
+        let pieces = match fen.split(' ').nth(0) {
+            Some(pieces) => pieces,
+            None => {
+                panic!("Invalid FEN string: {}", fen);
+            }
+        };
+        for c in pieces.chars() {
+            match c {
+                'P' => {
+                    board.pawns |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'N' => {
+                    board.knights |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'B' => {
+                    board.bishops |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'R' => {
+                    board.rooks |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'Q' => {
+                    board.queens |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'K' => {
+                    board.kings |= Bitboard::from_square([file, rank]);
+                    board.white |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'p' => {
+                    board.pawns |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'n' => {
+                    board.knights |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'b' => {
+                    board.bishops |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'r' => {
+                    board.rooks |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'q' => {
+                    board.queens |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                'k' => {
+                    board.kings |= Bitboard::from_square([file, rank]);
+                    board.black |= Bitboard::from_square([file, rank]);
+                    file += 1;
+                }
+                '1'..='8' => file += c as u8 - b'0',
+                '/' => {
+                    rank -= 1;
+                    file = 0;
+                }
+                _ => {
+                    panic!("Invalid FEN character: {}", c);
+                }
+            }
         }
+        board
     }
 
     pub fn get_piece(&self, square: Bitboard) -> Option<Piece> {
@@ -212,6 +308,31 @@ impl Board {
     }
 }
 
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut board = String::new();
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square = Bitboard::from_square([file, rank]);
+                let c = match self.get_piece(square) {
+                    Some(piece) => match piece.kind {
+                        PieceKind::Pawn => 'P',
+                        PieceKind::Knight => 'N',
+                        PieceKind::Bishop => 'B',
+                        PieceKind::Rook => 'R',
+                        PieceKind::Queen => 'Q',
+                        PieceKind::King => 'K',
+                    },
+                    None => '.',
+                };
+                board += &format!("{} ", c);
+            }
+            board += "\n";
+        }
+        write!(f, "{}", board)
+    }
+}
+
 pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,
@@ -241,34 +362,71 @@ impl Move {
     }
 }
 
+impl std::fmt::Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:18x} -> {:18x}", self.from.0, self.to.0)
+    }
+}
+
 // pseudo-legal moves
 // Does not check for check or pinned pieces
-pub fn gen_moves(board: &Board, mov: Move) -> Vec<Move> {
-    let piece = match board.get_piece(mov.from) {
+pub fn gen_moves(board: &Board, origin_square: Bitboard) -> Vec<Move> {
+    let piece = match board.get_piece(origin_square) {
         Some(piece) => piece,
         None => return vec![],
     };
     let moves: Vec<Move> = match piece.kind {
         PieceKind::Pawn => {
             let mut moves: Vec<Move> = vec![];
-            let to: Bitboard = north(mov.from);
-            moves.push(Move::new(mov.from, to));
-            if mov.from & PAWN_INITIAL != Bitboard(0) {
-                moves.push(Move::new(mov.from, north(to)));
+            let to: Bitboard = north(origin_square);
+            moves.push(Move::new(origin_square, to));
+            if origin_square & PAWN_INITIAL != Bitboard(0) {
+                moves.push(Move::new(origin_square, north(to)));
             }
             // TODO: capture moves
             moves
         }
         PieceKind::Knight => {
             let mut moves: Vec<Move> = vec![];
-            let to: Bitboard = north(mov.from);
-            moves.push(Move::new(mov.from, to));
-            // TODO: capture moves
+            KNIGHT_MOVES.iter().for_each(|&(dx, dy)| {
+                let to = origin_square ^ Bitboard::from_square([dx as u8, dy as u8]);
+                moves.push(Move::new(origin_square, to));
+            });
             moves
         }
-        _ => vec![],
+        PieceKind::Bishop => {
+            let mut moves: Vec<Move> = vec![];
+            // TODO: raycast moves
+            moves
+        }
+        PieceKind::Rook => {
+            let mut moves: Vec<Move> = vec![];
+            // TODO: raycast moves
+            moves
+        }
+        PieceKind::Queen => {
+            let mut moves: Vec<Move> = vec![];
+            // TODO: raycast moves
+            moves
+        }
+        PieceKind::King => {
+            let mut moves: Vec<Move> = vec![];
+            [
+                north(origin_square),
+                south(origin_square),
+                east(origin_square),
+                west(origin_square),
+                north_east(origin_square),
+                north_west(origin_square),
+                south_east(origin_square),
+                south_west(origin_square),
+            ]
+            .iter()
+            .for_each(|&to| moves.push(Move::new(origin_square, to)));
+            moves
+        }
     };
     moves
 }
 
-pub fn make_move(board: &mut Bitboard, mov: Move) {}
+pub fn make_move(board: &mut Board, mov: Move) {}
