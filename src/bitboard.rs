@@ -5,9 +5,9 @@ use std::fmt::Write;
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    pub const MAX: Bitboard = Bitboard(0xFF_FF_FF_FF_FF_FF_FF_FF);
-    pub const FROM_SQUARE: fn([u8; 2]) -> Bitboard =
-        |[file, rank]| Bitboard(1 << (rank * 8 + file));
+    pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
+    pub const FROM_SQUARE: fn([u8; 2]) -> Self =
+        |[file, rank]| Self(1 << (rank * 8 + file));
 
     pub fn north(self) -> Self {
         (self & NOT_RANK_8) << 8
@@ -41,15 +41,15 @@ impl Bitboard {
         (self & (NOT_RANK_1 | NOT_FILE_A)) >> 9
     }
 
-    pub fn pawn_initial(self, color_mask: Bitboard) -> bool {
+    pub fn pawn_initial(self, color_mask: Self) -> bool {
         self & PAWN_INITIAL & color_mask == self
     }
 
-    pub fn move_bit(&mut self, from: Bitboard, to: Bitboard) {
+    pub fn move_bit(&mut self, from: Self, to: Self) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(*self & from, from);
-            assert_eq!(*self & to, Bitboard(0));
+            assert_eq!(*self & to, Self(0));
         }
         *self ^= from;
         *self |= to;
@@ -64,7 +64,7 @@ impl std::fmt::Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let display: Vec<String> = printer::display_bitboard(*self);
         let formatted = display.iter().fold(String::new(), |mut acc, s| {
-            writeln!(acc, "{}", s).unwrap();
+            writeln!(acc, "{s}").unwrap();
             acc
         });
         writeln!(f, "{formatted}")
@@ -75,7 +75,7 @@ impl std::ops::BitOr for Bitboard {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self {
-        Bitboard(self.0 | rhs.0)
+        Self(self.0 | rhs.0)
     }
 }
 
@@ -101,7 +101,7 @@ impl std::ops::BitAnd for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self {
-        Bitboard(self.0 & rhs.0)
+        Self(self.0 & rhs.0)
     }
 }
 
@@ -109,7 +109,7 @@ impl std::ops::Shl<u64> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: u64) -> Self {
-        Bitboard(self.0 << rhs)
+        Self(self.0 << rhs)
     }
 }
 
@@ -117,7 +117,7 @@ impl std::ops::Shr<u64> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: u64) -> Self {
-        Bitboard(self.0 >> rhs)
+        Self(self.0 >> rhs)
     }
 }
 
@@ -125,7 +125,7 @@ impl std::ops::Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self {
-        Bitboard(!self.0)
+        Self(!self.0)
     }
 }
 
@@ -133,7 +133,7 @@ impl std::ops::BitXor<usize> for Bitboard {
     type Output = Self;
 
     fn bitxor(self, rhs: usize) -> Self {
-        Bitboard(self.0 ^ rhs as u64)
+        Self(self.0 ^ rhs as u64)
     }
 }
 
@@ -141,7 +141,7 @@ impl std::ops::BitXor for Bitboard {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self {
-        Bitboard(self.0 ^ rhs.0)
+        Self(self.0 ^ rhs.0)
     }
 }
 

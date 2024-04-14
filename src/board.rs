@@ -96,11 +96,11 @@ impl std::fmt::Display for Board {
                     },
                     None => '.',
                 };
-                board += &format!("{} ", c);
+                board += &format!("{c} ");
             }
             board += "\n";
         }
-        write!(f, "{}", board)
+        write!(f, "{board}")
     }
 }
 
@@ -118,15 +118,9 @@ impl Move {
     pub fn new(piece: &Piece, from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
         #[cfg(debug_assertions)]
         {
-            if from & to != Bitboard(0) {
-                panic!("From and to squares are the same");
-            }
-            if piece.kind != PieceKind::Pawn && promotion.is_some() {
-                panic!("Non-pawn piece cannot promote");
-            }
-            if to & (RANK_1 | RANK_8) == Bitboard(0) && promotion.is_some() {
-                panic!("Pawn must promote on rank 1 or 8");
-            }
+            assert!(!(from & to != Bitboard(0)), "From and to squares are the same");
+            assert!(!(piece.kind != PieceKind::Pawn && promotion.is_some()), "Non-pawn piece cannot promote");
+            assert!(!(to & (RANK_1 | RANK_8) == Bitboard(0) && promotion.is_some()), "Pawn must promote on rank 1 or 8");
         }
         Self {
             from,
@@ -147,7 +141,7 @@ impl std::fmt::Display for Move {
         writeln!(f, "from:              to:")?;
         let format: fn(&str) -> String = |s: &str| -> String {
             s.chars().fold(String::new(), |mut output, c| -> String {
-                write!(output, "{} ", c);
+                write!(output, "{c} ");
                 output
             })
         };
@@ -266,7 +260,7 @@ pub fn gen_moves_from_piece(board: &Board, origin_square: Bitboard) -> Vec<Move>
         }
         PieceKind::Knight => {
             let mut moves: Vec<Move> = vec![];
-            for &offset in KNIGHT_MOVES.iter() {
+            for &offset in &KNIGHT_MOVES {
                 let positive = origin_square << offset.into();
                 if positive & current_turn_mask != Bitboard(0) {
                     moves.push(Move::new(&piece, origin_square, positive, None));
@@ -304,7 +298,7 @@ pub fn gen_moves_from_piece(board: &Board, origin_square: Bitboard) -> Vec<Move>
         }
         PieceKind::Queen => {
             let mut moves: Vec<Move> = vec![];
-            [
+            for direction in &[
                 Direction::North,
                 Direction::South,
                 Direction::East,
@@ -313,11 +307,9 @@ pub fn gen_moves_from_piece(board: &Board, origin_square: Bitboard) -> Vec<Move>
                 Direction::NorthWest,
                 Direction::SouthEast,
                 Direction::SouthWest,
-            ]
-            .iter()
-            .for_each(|direction| {
+            ] {
                 gen_sliding_moves(&mut moves, board, &piece, origin_square, direction);
-            });
+            }
             moves
         }
         PieceKind::King => {
