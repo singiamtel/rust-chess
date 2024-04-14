@@ -2,15 +2,17 @@ use board::gen_moves;
 
 use crate::{board::Board, piece::PieceKind};
 
+mod bitboard;
 mod board;
 mod eval;
 mod game;
+mod io;
 mod movement;
 mod perft;
 mod piece;
 mod printer;
 mod search;
-mod uci;
+mod test;
 
 fn main() {
     let board = Board::new(Board::STARTING_FEN);
@@ -30,7 +32,7 @@ fn main() {
     let mut rook_moves = 0;
     let mut queen_moves = 0;
     let mut king_moves = 0;
-    for m in moves.iter() {
+    for m in &moves {
         move_count += 1;
         match board.get_piece(m.from).unwrap().kind {
             PieceKind::Pawn => pawn_moves += 1,
@@ -41,11 +43,11 @@ fn main() {
             PieceKind::King => king_moves += 1,
         };
     }
-    println!("Total legal moves in turn 1: {}", move_count);
-    println!("Pawn: {}", pawn_moves);
-    println!("Knight: {}", knight_moves);
-    println!("Bishop: {}", bishop_moves);
-    println!("Rook: {}", rook_moves);
-    println!("Queen: {}", queen_moves);
-    println!("King: {}", king_moves);
+    println!("Total legal moves in turn 1: {move_count}");
+    println!("Pawn: {pawn_moves}");
+    println!("Knight: {knight_moves}");
+    println!("Bishop: {bishop_moves}");
+    println!("Rook: {rook_moves}");
+    println!("Queen: {queen_moves}");
+    println!("King: {king_moves}");
 }

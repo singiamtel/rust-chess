@@ -1,35 +1,4 @@
 #![allow(dead_code, unused)]
-pub struct Piece {
-    pub color: Color,
-    pub kind: PieceKind,
-}
-
-impl std::fmt::Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}{}", self.color, self.kind)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Color {
-    White,
-    Black,
-}
-
-impl Color {
-    pub fn opposite(&self) -> Self {
-        match self {
-            Self::White => Self::Black,
-            Self::Black => Self::White,
-        }
-    }
-}
-
-impl std::fmt::Display for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceKind {
@@ -41,9 +10,41 @@ pub enum PieceKind {
     King,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Color {
+    White,
+    Black,
+}
+
+pub struct Piece {
+    pub color: Color,
+    pub kind: PieceKind,
+}
+
+impl std::fmt::Display for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {}", self.color, self.kind)
+    }
+}
+
+impl Color {
+    pub const fn opposite(self) -> Self {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
+        }
+    }
+}
+
+impl std::fmt::Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 impl std::fmt::Display for PieceKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -63,7 +64,7 @@ const PIECE_CHARS: [(PieceKind, char); 12] = [
 ];
 
 impl Piece {
-    pub fn new(color: Color, kind: PieceKind) -> Self {
+    pub const fn new(color: Color, kind: PieceKind) -> Self {
         Self { color, kind }
     }
 }

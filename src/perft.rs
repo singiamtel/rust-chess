@@ -6,7 +6,7 @@ pub fn perft(board: &Board, depth: u8) -> u64 {
         return 1;
     }
     let moves = gen_moves(board);
-    for m in moves.iter() {
+    for m in &moves {
         // make_move(board, m);
         // let nodes = perft(board, depth - 1);
         // unmake_move(board, m);
