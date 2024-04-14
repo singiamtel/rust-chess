@@ -1,3 +1,4 @@
+#![allow(dead_code, unused)]
 use crate::board::Move;
 use crate::piece::Piece;
 use std::mem;

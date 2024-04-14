@@ -1,3 +1,4 @@
+#![allow(dead_code, unused)]
 use crate::printer;
 use std::fmt::Write;
 
