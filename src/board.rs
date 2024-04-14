@@ -371,30 +371,23 @@ impl std::fmt::Display for Move {
         let from_display: Vec<String> = printer::display_bitboard(&self.from);
         let to_display: Vec<String> = printer::display_bitboard(&self.to);
         writeln!(f, "from:              to:")?;
-        // let format = |s: &str| s.chars().map(|c| format!("{} ", c)).collect::<String>();
-        let format = |s: &str| {
-            s.chars().fold(String::new(), |mut output, c| {
-                let _ = write!(output, "{} ", c);
+        let format: fn(&str) -> String = |s: &str| -> String {
+            s.chars().fold(String::new(), |mut output, c| -> String {
+                write!(output, "{} ", c);
                 output
             })
         };
-        // let formatted: String = from_display
-        //     .iter()
-        //     .zip(to_display.iter())
-        //     .map(|(from, to)| format!("{} | {}", format(from), format(to)))
-        //     .collect::<Vec<String>>()
-        //     .join("\n");
         let formatted: String = from_display.iter().zip(to_display.iter()).fold(
             String::new(),
-            |mut acc, (from, to)| {
+            |mut acc, (from, to)| -> String {
                 if !acc.is_empty() {
-                    writeln!(acc).unwrap(); // Safely append a newline if not the first entry
+                    writeln!(acc);
                 }
-                write!(acc, "{} | {}", format(from), format(to)).unwrap(); // Write formatted string directly to accumulator
+                write!(acc, "{} | {}", format(from), format(to));
                 acc
             },
         );
-        write!(f, "{}", formatted)?;
+        write!(f, "{}", formatted);
         Ok(())
     }
 }
