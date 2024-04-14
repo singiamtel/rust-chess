@@ -6,8 +6,7 @@ pub struct Bitboard(pub u64);
 
 impl Bitboard {
     pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
-    pub const FROM_SQUARE: fn([u8; 2]) -> Self =
-        |[file, rank]| Self(1 << (rank * 8 + file));
+    pub const FROM_SQUARE: fn([u8; 2]) -> Self = |[file, rank]| Self(1 << (rank * 8 + file));
 
     pub fn north(self) -> Self {
         (self & NOT_RANK_8) << 8
