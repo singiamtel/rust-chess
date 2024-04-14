@@ -1,3 +1,4 @@
+#![allow(dead_code, unused)]
 use crate::board::{gen_moves, Board};
 
 pub fn perft(board: &Board, depth: u8) -> u64 {

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused)]
 pub struct Piece {
     pub color: Color,
     pub kind: PieceKind,
