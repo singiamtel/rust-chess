@@ -1,6 +1,6 @@
 use crate::board::{gen_moves, Board};
 
-pub fn perft(board: &mut Board, depth: u8) -> u64 {
+pub fn perft(board: &Board, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }

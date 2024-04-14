@@ -1,9 +1,6 @@
 use board::gen_moves;
 
-use crate::{
-    board::{gen_moves_from_piece, Bitboard, Board, Move},
-    piece::{Piece, PieceKind},
-};
+use crate::{board::Board, piece::PieceKind};
 
 mod board;
 mod eval;
@@ -24,10 +21,6 @@ fn main() {
     //     Some(p) => p,
     //     None => panic!("No piece found"),
     // };
-    // println!("Moves for square({}):", piece);
-    // for m in moves {
-    //     println!("{}", m);
-    // }
     let moves = gen_moves(&board);
     // count how many moves are generated per piece
     let mut move_count = 0;

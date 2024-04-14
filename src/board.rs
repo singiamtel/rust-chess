@@ -1,11 +1,12 @@
 use crate::piece::{Color, Piece, PieceKind};
 use crate::printer;
+use std::fmt::Write;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    pub const MAX: Bitboard = Bitboard(0xFFFFFFFFFFFFFFFF);
+    pub const MAX: Bitboard = Bitboard(0xFF_FF_FF_FF_FF_FF_FF_FF);
     pub const FROM_SQUARE: fn([u8; 2]) -> Bitboard =
         |[file, rank]| Bitboard(1 << (rank * 8 + file));
 }
@@ -13,10 +14,10 @@ impl Bitboard {
 impl std::fmt::Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let display: Vec<String> = printer::display_bitboard(self);
-        let formatted = display
-            .iter()
-            .map(|s| format!("{}\n", s))
-            .collect::<String>();
+        let formatted = display.iter().fold(String::new(), |mut acc, s| {
+            writeln!(acc, "{}", s).unwrap();
+            acc
+        });
         write!(f, "\n{}", formatted)
     }
 }
@@ -90,41 +91,41 @@ impl std::ops::BitXor for Bitboard {
 }
 
 // Little-endian rank-file mapping
-const FILE_A: Bitboard = Bitboard(0x8080808080808080);
-const NOT_FILE_A: Bitboard = Bitboard(0x7f7f7f7f7f7f7f7f);
-const FILE_H: Bitboard = Bitboard(0x0101010101010101);
-const NOT_FILE_H: Bitboard = Bitboard(0xfefefefefefefefe);
+const FILE_A: Bitboard = Bitboard(0x80_80_80_80_80_80_80_80);
+const NOT_FILE_A: Bitboard = Bitboard(0x7f_7f_7f_7f_7f_7f_7f_7f);
+const FILE_H: Bitboard = Bitboard(0x01_01_01_01_01_01_01_01);
+const NOT_FILE_H: Bitboard = Bitboard(0xfe_fe_fe_fe_fe_fe_fe_fe);
 
 // A-H
 const FILES: [Bitboard; 8] = [
-    Bitboard(0x0101010101010101),
-    Bitboard(0x0202020202020202),
-    Bitboard(0x0404040404040404),
-    Bitboard(0x0808080808080808),
-    Bitboard(0x1010101010101010),
-    Bitboard(0x2020202020202020),
-    Bitboard(0x4040404040404040),
-    Bitboard(0x8080808080808080),
+    Bitboard(0x01_01_01_01_01_01_01_01),
+    Bitboard(0x02_02_02_02_02_02_02_02),
+    Bitboard(0x04_04_04_04_04_04_04_04),
+    Bitboard(0x08_08_08_08_08_08_08_08),
+    Bitboard(0x10_10_10_10_10_10_10_10),
+    Bitboard(0x20_20_20_20_20_20_20_20),
+    Bitboard(0x40_40_40_40_40_40_40_40),
+    Bitboard(0x80_80_80_80_80_80_80_80),
 ];
 
 // 1-8
 const RANKS: [Bitboard; 8] = [
-    Bitboard(0x00000000000000FF),
-    Bitboard(0x0000000000000FF00),
-    Bitboard(0x00000000000FF0000),
-    Bitboard(0x0000000000FF00000),
-    Bitboard(0x00000000FF0000000),
-    Bitboard(0x0000FF0000000000),
-    Bitboard(0x00FF000000000000),
-    Bitboard(0xFF00000000000000),
+    Bitboard(0x00_00_00_00_00_00_00_FF),
+    Bitboard(0x00_00_00_00_00_00_FF_00),
+    Bitboard(0x00_00_00_00_00_FF_00_00),
+    Bitboard(0x00_00_00_00_FF_00_00_00),
+    Bitboard(0x00_00_00_00_FF_00_00_00),
+    Bitboard(0x00_00_00_FF_00_00_00_00),
+    Bitboard(0x00_00_FF_00_00_00_00_00),
+    Bitboard(0x00_FF_00_00_00_00_00_00),
 ];
 
 const RANK_1: Bitboard = RANKS[0];
-const NOT_RANK_1: Bitboard = Bitboard(0xFFFFFFFFFFFFF000);
+const NOT_RANK_1: Bitboard = Bitboard(0xFF_FF_FF_FF_FF_FF_FF_00);
 const RANK_8: Bitboard = RANKS[7];
-const NOT_RANK_8: Bitboard = Bitboard(0x00FFFFFFFFFFFFFF);
+const NOT_RANK_8: Bitboard = Bitboard(0x00_FF_FF_FF_FF_FF_FF_FF);
 
-const PAWN_INITIAL: Bitboard = Bitboard(0x00FF00000000FF00);
+const PAWN_INITIAL: Bitboard = Bitboard(0x00_FF_00_00_00_00_FF_00);
 
 fn north(bb: Bitboard) -> Bitboard {
     (bb & NOT_RANK_8) << 8
@@ -196,7 +197,7 @@ impl Board {
         fullmove_number: 1,
         side_to_move: Color::White,
     };
-    pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+    pub const STARTING_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
     pub fn new(fen: &str) -> Self {
         let mut board = Self::DEFAULT;
         let mut rank = 7;
@@ -368,14 +369,30 @@ impl std::fmt::Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let from_display: Vec<String> = printer::display_bitboard(&self.from);
         let to_display: Vec<String> = printer::display_bitboard(&self.to);
-        write!(f, "from:              to:\n")?;
-        let format = |s: &str| s.chars().map(|c| format!("{} ", c)).collect::<String>();
-        let formatted = from_display
-            .iter()
-            .zip(to_display.iter())
-            .map(|(from, to)| format!("{} | {}", format(from), format(to)))
-            .collect::<Vec<String>>()
-            .join("\n");
+        writeln!(f, "from:              to:")?;
+        // let format = |s: &str| s.chars().map(|c| format!("{} ", c)).collect::<String>();
+        let format = |s: &str| {
+            s.chars().fold(String::new(), |mut output, c| {
+                let _ = write!(output, "{} ", c);
+                output
+            })
+        };
+        // let formatted: String = from_display
+        //     .iter()
+        //     .zip(to_display.iter())
+        //     .map(|(from, to)| format!("{} | {}", format(from), format(to)))
+        //     .collect::<Vec<String>>()
+        //     .join("\n");
+        let formatted: String = from_display.iter().zip(to_display.iter()).fold(
+            String::new(),
+            |mut acc, (from, to)| {
+                if !acc.is_empty() {
+                    writeln!(acc).unwrap(); // Safely append a newline if not the first entry
+                }
+                write!(acc, "{} | {}", format(from), format(to)).unwrap(); // Write formatted string directly to accumulator
+                acc
+            },
+        );
         write!(f, "{}", formatted)?;
         Ok(())
     }
@@ -573,10 +590,13 @@ pub fn gen_moves(board: &Board) -> Vec<Move> {
     for i in 0..64 {
         let square = Bitboard(1 << i);
         if occupied & square & current_turn_mask != Bitboard(0) {
-            let piece = match board.get_piece(square) {
-                Some(piece) => piece,
-                None => panic!("No piece found at square: {}", i),
-            };
+            #[cfg(debug_assertions)]
+            {
+                match board.get_piece(square) {
+                    Some(piece) => piece,
+                    None => panic!("No piece found at square: {}", i),
+                };
+            }
             let mut piece_moves = gen_moves_from_piece(board, square);
             moves.append(&mut piece_moves);
         }
@@ -585,4 +605,4 @@ pub fn gen_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
-pub fn make_move(board: &mut Board, mov: Move) {}
+// pub fn make_move(board: &mut Board, mov: Move) {}
