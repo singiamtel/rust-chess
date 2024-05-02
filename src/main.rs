@@ -1,21 +1,19 @@
-use board::gen_moves;
+use game::gen_moves;
 
-use crate::{board::Board, piece::PieceKind};
+use crate::{game::Game, piece::PieceKind};
 
 mod bitboard;
 mod board;
 mod eval;
 mod game;
-mod io;
-mod movement;
+mod r#move;
 mod perft;
 mod piece;
 mod printer;
-mod search;
 mod test;
 
 fn main() {
-    let board = Board::new(Board::STARTING_FEN);
+    let game = Game::new(Game::STARTING_FEN);
     // println!("{}", board);
     // let coords = [4, 0];
     // let moves: Vec<Move> = gen_moves_from_piece(&board, Bitboard::FROM_SQUARE(coords));
@@ -23,7 +21,7 @@ fn main() {
     //     Some(p) => p,
     //     None => panic!("No piece found"),
     // };
-    let moves = gen_moves(&board);
+    let moves = gen_moves(&game);
     // count how many moves are generated per piece
     let mut move_count = 0;
     let mut pawn_moves = 0;
@@ -34,7 +32,7 @@ fn main() {
     let mut king_moves = 0;
     for m in &moves {
         move_count += 1;
-        match board.get_piece(m.from).unwrap().kind {
+        match game.board.get_piece(m.from).unwrap().kind {
             PieceKind::Pawn => pawn_moves += 1,
             PieceKind::Knight => knight_moves += 1,
             PieceKind::Bishop => bishop_moves += 1,

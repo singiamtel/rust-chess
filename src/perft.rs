@@ -1,11 +1,11 @@
 #![allow(dead_code, unused)]
-use crate::board::{gen_moves, Board};
+use crate::{game::gen_moves, game::Game};
 
-pub fn perft(board: &Board, depth: u8) -> u64 {
+pub fn perft(game: &Game, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = gen_moves(board);
+    let moves = gen_moves(game);
     for m in &moves {
         // make_move(board, m);
         // let nodes = perft(board, depth - 1);

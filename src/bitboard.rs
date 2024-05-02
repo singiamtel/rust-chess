@@ -55,6 +55,10 @@ impl Bitboard {
         *self |= to;
     }
 
+    pub fn clear_bit(&mut self, from: Self) {
+        self.0 &= !from.0;
+    }
+
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
