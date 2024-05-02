@@ -68,7 +68,11 @@ impl std::fmt::Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let display: Vec<String> = printer::display_bitboard(*self);
         let formatted = display.iter().fold(String::new(), |mut acc, s| {
-            writeln!(acc, "{s}").unwrap();
+            s.chars().fold(&mut acc, |mut acc, c| {
+                write!(acc, "{} ", c).unwrap();
+                acc
+            });
+            writeln!(acc).unwrap();
             acc
         });
         writeln!(f, "{formatted}")

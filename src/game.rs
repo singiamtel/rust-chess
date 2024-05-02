@@ -223,11 +223,11 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             let mut moves: Vec<Move> = vec![];
             for &offset in &KNIGHT_MOVES {
                 let positive = origin_square << offset.into();
-                if positive & current_turn_mask != Bitboard(0) {
+                if positive & current_turn_mask == Bitboard(0) {
                     moves.push(Move::new(origin_square, positive, None));
                 }
                 let negative = origin_square >> offset.into();
-                if negative & current_turn_mask != Bitboard(0) {
+                if negative & current_turn_mask == Bitboard(0) {
                     moves.push(Move::new(origin_square, negative, None));
                 }
             }
@@ -318,4 +318,22 @@ pub fn gen_moves(game: &Game) -> Vec<Move> {
     }
 
     moves
+}
+
+pub fn make_move(game: &mut Game, mov: Move) {
+    println!("Making move: {mov}");
+    game.board.make_move(mov);
+    game.turn = game.turn.opposite();
+    game.history.push(mov);
+    game.fullmove_number += 1;
+    game.halfmove_clock += 1;
+}
+
+pub fn unmake_move(game: &mut Game) {
+    let mov = game.history.pop().expect("No moves to undo");
+    println!("Unmaking move: {mov}");
+    game.board.unmove_piece(mov);
+    game.turn = game.turn.opposite();
+    game.fullmove_number -= 1;
+    game.halfmove_clock -= 1;
 }

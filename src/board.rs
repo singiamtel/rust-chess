@@ -87,64 +87,80 @@ impl Board {
         }
     }
 
-    pub fn make_move(board: &mut Self, mov: Move) {
-        let Some(piece) = board.get_piece(mov.from) else {
+    pub fn move_piece(&mut self, mov: Move) {
+        let Some(piece) = self.get_piece(mov.from) else {
             panic!("No piece found at square: {}", mov.from);
         };
         let mut color_mask = match piece.color {
-            Color::White => board.white,
-            Color::Black => board.black,
+            Color::White => self.white,
+            Color::Black => self.black,
         };
 
+        // TODO: handle castling
         match piece.kind {
             PieceKind::Pawn => {
-                board.pawns.move_bit(mov.from, mov.to);
+                self.pawns.move_bit(mov.from, mov.to);
                 // TODO: make promotions
             }
             PieceKind::Knight => {
-                board.knights.move_bit(mov.from, mov.to);
+                self.knights.move_bit(mov.from, mov.to);
             }
             PieceKind::Bishop => {
-                board.bishops.move_bit(mov.from, mov.to);
+                self.bishops.move_bit(mov.from, mov.to);
             }
             PieceKind::Rook => {
-                board.rooks.move_bit(mov.from, mov.to);
+                self.rooks.move_bit(mov.from, mov.to);
             }
             PieceKind::Queen => {
-                board.queens.move_bit(mov.from, mov.to);
+                self.queens.move_bit(mov.from, mov.to);
             }
             PieceKind::King => {
-                board.kings.move_bit(mov.from, mov.to);
-                // TODO: handle castling
+                self.kings.move_bit(mov.from, mov.to);
             }
         }
         color_mask.move_bit(mov.from, mov.to);
+    }
+
+    pub fn make_move(&mut self, mov: Move) {
+        self.move_piece(mov);
+        let Some(piece) = self.get_piece(mov.from) else {
+            println!("{}", self);
+            panic!("No piece found at square: {}", mov.from);
+        };
+        let mut color_mask = match piece.color {
+            Color::White => self.white,
+            Color::Black => self.black,
+        };
+
         // if it was a capture, remove the captured piece
-        // TODO: handle en passant
         if mov.capture.is_some() {
-            let captured_piece = board.get_piece(mov.to).unwrap();
+            let captured_piece = self.get_piece(mov.to).unwrap();
             match captured_piece.kind {
                 PieceKind::Pawn => {
-                    board.pawns.clear_bit(mov.to);
+                    self.pawns.clear_bit(mov.to);
                 }
                 PieceKind::Knight => {
-                    board.knights.clear_bit(mov.to);
+                    self.knights.clear_bit(mov.to);
                 }
                 PieceKind::Bishop => {
-                    board.bishops.clear_bit(mov.to);
+                    self.bishops.clear_bit(mov.to);
                 }
                 PieceKind::Rook => {
-                    board.rooks.clear_bit(mov.to);
+                    self.rooks.clear_bit(mov.to);
                 }
                 PieceKind::Queen => {
-                    board.queens.clear_bit(mov.to);
+                    self.queens.clear_bit(mov.to);
                 }
                 PieceKind::King => {
-                    board.kings.clear_bit(mov.to);
+                    self.kings.clear_bit(mov.to);
                 }
             }
             color_mask.clear_bit(mov.to);
         }
+    }
+
+    pub fn unmove_piece(&mut self, mov: Move) {
+        self.move_piece(Move::new(mov.to, mov.from, None));
     }
 }
 

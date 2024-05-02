@@ -2,7 +2,7 @@ use crate::{bitboard::Bitboard, piece::PieceKind, printer};
 
 use std::fmt::Write;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,
@@ -63,5 +63,21 @@ impl std::fmt::Display for Move {
         );
         write!(f, "{formatted}").unwrap();
         Ok(())
+    }
+}
+
+pub fn bitboard_to_algebraic(bitboard: Bitboard) -> String {
+    let file = (bitboard.0.trailing_zeros() % 8) as u8;
+    let rank = (bitboard.0.trailing_zeros() / 8) as u8;
+    let mut algebraic = String::new();
+    write!(algebraic, "{}{}", (file + b'a') as char, rank + 1).unwrap();
+    algebraic
+}
+
+impl std::fmt::Debug for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let from = bitboard_to_algebraic(self.from);
+        let to = bitboard_to_algebraic(self.to);
+        write!(f, "{} -> {}", from, to)
     }
 }
