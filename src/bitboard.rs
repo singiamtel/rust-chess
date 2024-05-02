@@ -59,7 +59,7 @@ impl Bitboard {
         self.0 &= !from.0;
     }
 
-    pub fn is_empty(self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 }

@@ -200,9 +200,8 @@ pub fn gen_sliding_moves(
 // pseudo-legal moves
 // Does not check for check or pinned pieces
 pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
-    let piece = match game.board.get_piece(origin_square) {
-        Some(piece) => piece,
-        None => return vec![],
+    let Some(piece) = game.board.get_piece(origin_square) else {
+        return vec![];
     };
     let current_turn_mask = if game.turn == Color::White {
         game.board.white
@@ -309,10 +308,9 @@ pub fn gen_moves(game: &Game) -> Vec<Move> {
         if occupied & square & current_turn_mask != Bitboard(0) {
             #[cfg(debug_assertions)]
             {
-                match game.board.get_piece(square) {
-                    Some(piece) => piece,
-                    None => panic!("No piece found at square: {i}"),
-                };
+                game.board
+                    .get_piece(square)
+                    .map_or_else(|| panic!("No piece found at square: {i}"), |piece| piece);
             }
             let mut piece_moves = gen_moves_from_piece(game, square);
             moves.append(&mut piece_moves);

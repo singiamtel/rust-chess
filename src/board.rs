@@ -47,7 +47,11 @@ impl Board {
 
     pub fn get_piece(&self, square: Bitboard) -> Option<Piece> {
         if !(square & self.pawns).is_empty() {
-            Some(Piece::new(self.get_color(square).unwrap(), PieceKind::Pawn))
+            Some(Piece::new(
+                self.get_color(square)
+                    .expect("Pieces and colors are out of sync"),
+                PieceKind::Pawn,
+            ))
         } else if !(square & self.knights).is_empty() {
             Some(Piece::new(
                 self.get_color(square)
@@ -150,17 +154,16 @@ impl std::fmt::Display for Board {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let square = Bitboard::FROM_SQUARE([file, rank]);
-                let c = match self.get_piece(square) {
-                    Some(piece) => match piece.kind {
+                let c = self
+                    .get_piece(square)
+                    .map_or('.', |piece| match piece.kind {
                         PieceKind::Pawn => 'P',
                         PieceKind::Knight => 'N',
                         PieceKind::Bishop => 'B',
                         PieceKind::Rook => 'R',
                         PieceKind::Queen => 'Q',
                         PieceKind::King => 'K',
-                    },
-                    None => '.',
-                };
+                    });
                 board += &format!("{c} ");
             }
             board += "\n";

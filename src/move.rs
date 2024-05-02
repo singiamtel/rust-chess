@@ -13,7 +13,7 @@ pub struct Move {
 }
 
 impl Move {
-    pub fn new(from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
+    pub const fn new(from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
         // #[cfg(debug_assertions)]
         // {
         //     assert!(
