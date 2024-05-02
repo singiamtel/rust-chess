@@ -5,10 +5,11 @@ use crate::{
     r#move::Move,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Game {
     pub board: Board,
     pub turn: Color,
+    pub history: Vec<Move>,
 
     pub en_passant: Option<Bitboard>,
     pub castling: u8,
@@ -20,6 +21,7 @@ pub struct Game {
 impl Game {
     const DEFAULT: Self = Self {
         board: Board::DEFAULT,
+        history: vec![],
         en_passant: None,
         castling: 0,
         halfmove_clock: 0,

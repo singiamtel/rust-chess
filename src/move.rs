@@ -2,6 +2,7 @@ use crate::{bitboard::Bitboard, piece::PieceKind, printer};
 
 use std::fmt::Write;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,
