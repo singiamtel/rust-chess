@@ -1,8 +1,5 @@
-use crate::{
-    bitboard::{Bitboard, RANK_1, RANK_8},
-    piece::{Piece, PieceKind},
-    printer,
-};
+use crate::{bitboard::Bitboard, piece::PieceKind, printer};
+
 use std::fmt::Write;
 
 pub struct Move {
@@ -15,22 +12,22 @@ pub struct Move {
 }
 
 impl Move {
-    pub fn new(piece: &Piece, from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
-        #[cfg(debug_assertions)]
-        {
-            assert!(
-                !(from & to != Bitboard(0)),
-                "From and to squares are the same"
-            );
-            assert!(
-                !(piece.kind != PieceKind::Pawn && promotion.is_some()),
-                "Non-pawn piece cannot promote"
-            );
-            assert!(
-                !(to & (RANK_1 | RANK_8) == Bitboard(0) && promotion.is_some()),
-                "Pawn must promote on rank 1 or 8"
-            );
-        }
+    pub fn new(from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
+        // #[cfg(debug_assertions)]
+        // {
+        //     assert!(
+        //         !(from & to != Bitboard(0)),
+        //         "From and to squares are the same"
+        //     );
+        //     assert!(
+        //         !(piece.kind != PieceKind::Pawn && promotion.is_some()),
+        //         "Non-pawn piece cannot promote"
+        //     );
+        //     assert!(
+        //         !(to & (RANK_1 | RANK_8) == Bitboard(0) && promotion.is_some()),
+        //         "Pawn must promote on rank 1 or 8"
+        //     );
+        // }
         Self {
             from,
             to,

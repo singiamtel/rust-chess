@@ -147,49 +147,49 @@ pub fn gen_sliding_moves(
         Direction::North => {
             let to = origin_square.north();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::South => {
             let to = origin_square.south();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::East => {
             let to = origin_square.east();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::West => {
             let to = origin_square.west();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::NorthEast => {
             let to = origin_square.north_east();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::NorthWest => {
             let to = origin_square.north_west();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::SouthEast => {
             let to = origin_square.south_east();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
         Direction::SouthWest => {
             let to = origin_square.south_west();
             if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(piece, origin_square, to, None));
+                moves.push(Move::new(origin_square, to, None));
             }
         }
     }
@@ -211,9 +211,9 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
         PieceKind::Pawn => {
             let mut moves: Vec<Move> = vec![];
             let to: Bitboard = origin_square.north();
-            moves.push(Move::new(&piece, origin_square, to, None));
+            moves.push(Move::new(origin_square, to, None));
             if origin_square.pawn_initial(current_turn_mask) {
-                moves.push(Move::new(&piece, origin_square, to.north(), None));
+                moves.push(Move::new(origin_square, to.north(), None));
             }
             // TODO: capture moves, en passant, and promotion
             moves
@@ -223,11 +223,11 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             for &offset in &KNIGHT_MOVES {
                 let positive = origin_square << offset.into();
                 if positive & current_turn_mask != Bitboard(0) {
-                    moves.push(Move::new(&piece, origin_square, positive, None));
+                    moves.push(Move::new(origin_square, positive, None));
                 }
                 let negative = origin_square >> offset.into();
                 if negative & current_turn_mask != Bitboard(0) {
-                    moves.push(Move::new(&piece, origin_square, negative, None));
+                    moves.push(Move::new(origin_square, negative, None));
                 }
             }
             moves
@@ -286,7 +286,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             ]
             .iter()
             .filter(|&to| *to != Bitboard(0) && *to & current_turn_mask == Bitboard(0))
-            .for_each(|&to| moves.push(Move::new(&piece, origin_square, to, None)));
+            .for_each(|&to| moves.push(Move::new(origin_square, to, None)));
             moves
         }
     };
