@@ -1,6 +1,6 @@
 use perft::perft;
 
-use crate::game::Game;
+use crate::{game::Game, test::sizes};
 
 mod bitboard;
 mod board;
@@ -12,9 +12,9 @@ mod piece;
 mod printer;
 mod test;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut game = Game::new(Game::STARTING_FEN);
-    println!("{}", game.board.white);
+    // println!("{}", game.board.white);
     // let coords = [4, 0];
     // let moves: Vec<Move> = gen_moves_from_piece(&board, Bitboard::FROM_SQUARE(coords));
     // let piece = match board.get_piece(Bitboard::FROM_SQUARE(coords)) {
@@ -48,5 +48,8 @@ fn main() {
     // println!("Rook: {rook_moves}");
     // println!("Queen: {queen_moves}");
     // println!("King: {king_moves}");
-    perft(&mut game, 4);
+    let n_moves = perft(&mut game, 2)?;
+    println!("Total moves: {n_moves}");
+    sizes();
+    Ok(())
 }

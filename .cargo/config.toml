@@ -1,3 +1,4 @@
 [alias]
+unag = "clippy -- -W clippy::pedantic -W clippy::nursery"
 nag = "clippy -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used"
 fixnags = "clippy --fix -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used"

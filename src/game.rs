@@ -120,8 +120,6 @@ impl Game {
     }
 }
 
-const KNIGHT_MOVES: [u8; 4] = [17, 15, 10, 6];
-
 pub enum Direction {
     North,
     South,
@@ -211,24 +209,51 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
     let moves: Vec<Move> = match piece.kind {
         PieceKind::Pawn => {
             let mut moves: Vec<Move> = vec![];
-            let to: Bitboard = origin_square.north();
-            moves.push(Move::new(origin_square, to, None));
-            if origin_square.pawn_initial(current_turn_mask) {
-                moves.push(Move::new(origin_square, to.north(), None));
+            let to: Bitboard = if game.turn == Color::White {
+                origin_square.north()
+            } else {
+                origin_square.south()
+            };
+            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
+                moves.push(Move::new(origin_square, to, None));
+
+                if origin_square.pawn_initial(current_turn_mask) {
+                    let to = if game.turn == Color::White {
+                        origin_square.north().north()
+                    } else {
+                        origin_square.south().south()
+                    };
+
+                    if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
+                        moves.push(Move::new(origin_square, to, None));
+                    }
+                }
             }
             // TODO: capture moves, en passant, and promotion
             moves
         }
         PieceKind::Knight => {
             let mut moves: Vec<Move> = vec![];
-            for &offset in &KNIGHT_MOVES {
-                let positive = origin_square << offset.into();
-                if positive & current_turn_mask == Bitboard(0) {
-                    moves.push(Move::new(origin_square, positive, None));
-                }
-                let negative = origin_square >> offset.into();
-                if negative & current_turn_mask == Bitboard(0) {
-                    moves.push(Move::new(origin_square, negative, None));
+            for to in [
+                // U64 noNoEa(U64 b) {return (b & notHFile ) << 17;}
+                // U64 noEaEa(U64 b) {return (b & notGHFile) << 10;}
+                // U64 soEaEa(U64 b) {return (b & notGHFile) >>  6;}
+                // U64 soSoEa(U64 b) {return (b & notHFile ) >> 15;}
+                // U64 noNoWe(U64 b) {return (b & notAFile ) << 15;}
+                // U64 noWeWe(U64 b) {return (b & notABFile) <<  6;}
+                // U64 soWeWe(U64 b) {return (b & notABFile) >> 10;}
+                // U64 soSoWe(U64 b) {return (b & notAFile ) >> 17;}
+                (origin_square & !Bitboard::FILE_H) << 17,
+                (origin_square & !Bitboard::FILE_GH) << 10,
+                (origin_square & !Bitboard::FILE_GH) >> 6,
+                (origin_square & !Bitboard::FILE_H) >> 15,
+                (origin_square & !Bitboard::FILE_A) << 15,
+                (origin_square & !Bitboard::FILE_AB) << 6,
+                (origin_square & !Bitboard::FILE_AB) >> 10,
+                (origin_square & !Bitboard::FILE_A) >> 17,
+            ] {
+                if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
+                    moves.push(Move::new(origin_square, to, None));
                 }
             }
             moves
@@ -317,11 +342,10 @@ pub fn gen_moves(game: &Game) -> Vec<Move> {
         }
     }
 
-    moves
+    moves.into_iter().filter(|b| !b.to.is_empty()).collect()
 }
 
 pub fn make_move(game: &mut Game, mov: Move) {
-    println!("Making move: {mov}");
     game.board.make_move(mov);
     game.turn = game.turn.opposite();
     game.history.push(mov);
@@ -331,7 +355,6 @@ pub fn make_move(game: &mut Game, mov: Move) {
 
 pub fn unmake_move(game: &mut Game) {
     let mov = game.history.pop().expect("No moves to undo");
-    println!("Unmaking move: {mov}");
     game.board.unmove_piece(mov);
     game.turn = game.turn.opposite();
     game.fullmove_number -= 1;

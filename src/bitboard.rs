@@ -9,47 +9,88 @@ impl Bitboard {
     pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
     pub const FROM_SQUARE: fn([u8; 2]) -> Self = |[file, rank]| Self(1 << (rank * 8 + file));
 
+    pub const FILE_A: Self = Self(0x80_80_80_80_80_80_80_80);
+    pub const NOT_FILE_A: Self = Self(0x7f_7f_7f_7f_7f_7f_7f_7f);
+    pub const FILE_H: Self = Self(0x01_01_01_01_01_01_01_01);
+    pub const NOT_FILE_H: Self = Self(0xfe_fe_fe_fe_fe_fe_fe_fe);
+    pub const FILE_GH: Self = Self(0xC0_C0_C0_C0_C0_C0_C0_C0);
+    pub const FILE_AB: Self = Self(0x03_03_03_03_03_03_03_03);
+
+    // A-H
+    const FILES: [Self; 8] = [
+        Self(0x01_01_01_01_01_01_01_01),
+        Self(0x02_02_02_02_02_02_02_02),
+        Self(0x04_04_04_04_04_04_04_04),
+        Self(0x08_08_08_08_08_08_08_08),
+        Self(0x10_10_10_10_10_10_10_10),
+        Self(0x20_20_20_20_20_20_20_20),
+        Self(0x40_40_40_40_40_40_40_40),
+        Self(0x80_80_80_80_80_80_80_80),
+    ];
+
+    // 1-8
+    const RANKS: [Self; 8] = [
+        Self(0x00_00_00_00_00_00_00_FF),
+        Self(0x00_00_00_00_00_00_FF_00),
+        Self(0x00_00_00_00_00_FF_00_00),
+        Self(0x00_00_00_00_FF_00_00_00),
+        Self(0x00_00_00_00_FF_00_00_00),
+        Self(0x00_00_00_FF_00_00_00_00),
+        Self(0x00_00_FF_00_00_00_00_00),
+        Self(0x00_FF_00_00_00_00_00_00),
+    ];
+
+    pub const RANK_1: Self = Self::RANKS[0];
+    const NOT_RANK_1: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_00);
+    pub const RANK_8: Self = Self::RANKS[7];
+    const NOT_RANK_8: Self = Self(0x00_FF_FF_FF_FF_FF_FF_FF);
+
+    const PAWN_INITIAL: Self = Self(0x00_FF_00_00_00_00_FF_00);
+
     pub fn north(self) -> Self {
-        (self & NOT_RANK_8) << 8
+        (self & Self::NOT_RANK_8) << 8
     }
 
     pub fn south(self) -> Self {
-        (self & NOT_RANK_1) >> 8
+        (self & Self::NOT_RANK_1) >> 8
     }
 
     pub fn east(self) -> Self {
-        (self & NOT_FILE_H) << 1
+        (self & Self::NOT_FILE_H) << 1
     }
 
     pub fn west(self) -> Self {
-        (self & NOT_FILE_A) >> 1
+        (self & Self::NOT_FILE_A) >> 1
     }
 
     pub fn north_east(self) -> Self {
-        (self & (NOT_RANK_8 | NOT_FILE_H)) << 9
+        (self & (Self::NOT_RANK_8 | Self::NOT_FILE_H)) << 9
     }
 
     pub fn north_west(self) -> Self {
-        (self & (NOT_RANK_8 | NOT_FILE_A)) << 7
+        (self & (Self::NOT_RANK_8 | Self::NOT_FILE_A)) << 7
     }
 
     pub fn south_east(self) -> Self {
-        (self & (NOT_RANK_1 | NOT_FILE_H)) >> 7
+        (self & (Self::NOT_RANK_1 | Self::NOT_FILE_H)) >> 7
     }
 
     pub fn south_west(self) -> Self {
-        (self & (NOT_RANK_1 | NOT_FILE_A)) >> 9
+        (self & (Self::NOT_RANK_1 | Self::NOT_FILE_A)) >> 9
     }
 
     pub fn pawn_initial(self, color_mask: Self) -> bool {
-        self & PAWN_INITIAL & color_mask == self
+        self & Self::PAWN_INITIAL & color_mask == self
     }
 
     pub fn move_bit(&mut self, from: Self, to: Self) {
         #[cfg(debug_assertions)]
         {
+            // println!("from: {}", from);
+            // println!("to: {}", to);
+            // println!("self: {}", *self);
             assert_eq!(*self & from, from);
-            assert_eq!(*self & to, Self(0));
+            assert_eq!(*self & to, Self(0), "Trying to move to an occupied square");
         }
         *self ^= from;
         *self |= to;
@@ -67,9 +108,10 @@ impl Bitboard {
 impl std::fmt::Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let display: Vec<String> = printer::display_bitboard(*self);
+        writeln!(f)?;
         let formatted = display.iter().fold(String::new(), |mut acc, s| {
             s.chars().fold(&mut acc, |mut acc, c| {
-                write!(acc, "{} ", c).unwrap();
+                write!(acc, "{c} ").unwrap();
                 acc
             });
             writeln!(acc).unwrap();
@@ -152,39 +194,3 @@ impl std::ops::BitXor for Bitboard {
         Self(self.0 ^ rhs.0)
     }
 }
-
-pub const FILE_A: Bitboard = Bitboard(0x80_80_80_80_80_80_80_80);
-pub const NOT_FILE_A: Bitboard = Bitboard(0x7f_7f_7f_7f_7f_7f_7f_7f);
-pub const FILE_H: Bitboard = Bitboard(0x01_01_01_01_01_01_01_01);
-pub const NOT_FILE_H: Bitboard = Bitboard(0xfe_fe_fe_fe_fe_fe_fe_fe);
-
-// A-H
-const FILES: [Bitboard; 8] = [
-    Bitboard(0x01_01_01_01_01_01_01_01),
-    Bitboard(0x02_02_02_02_02_02_02_02),
-    Bitboard(0x04_04_04_04_04_04_04_04),
-    Bitboard(0x08_08_08_08_08_08_08_08),
-    Bitboard(0x10_10_10_10_10_10_10_10),
-    Bitboard(0x20_20_20_20_20_20_20_20),
-    Bitboard(0x40_40_40_40_40_40_40_40),
-    Bitboard(0x80_80_80_80_80_80_80_80),
-];
-
-// 1-8
-const RANKS: [Bitboard; 8] = [
-    Bitboard(0x00_00_00_00_00_00_00_FF),
-    Bitboard(0x00_00_00_00_00_00_FF_00),
-    Bitboard(0x00_00_00_00_00_FF_00_00),
-    Bitboard(0x00_00_00_00_FF_00_00_00),
-    Bitboard(0x00_00_00_00_FF_00_00_00),
-    Bitboard(0x00_00_00_FF_00_00_00_00),
-    Bitboard(0x00_00_FF_00_00_00_00_00),
-    Bitboard(0x00_FF_00_00_00_00_00_00),
-];
-
-pub const RANK_1: Bitboard = RANKS[0];
-const NOT_RANK_1: Bitboard = Bitboard(0xFF_FF_FF_FF_FF_FF_FF_00);
-pub const RANK_8: Bitboard = RANKS[7];
-const NOT_RANK_8: Bitboard = Bitboard(0x00_FF_FF_FF_FF_FF_FF_FF);
-
-const PAWN_INITIAL: Bitboard = Bitboard(0x00_FF_00_00_00_00_FF_00);

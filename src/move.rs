@@ -40,7 +40,7 @@ impl Move {
     }
 }
 
-impl std::fmt::Display for Move {
+impl std::fmt::Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let from_display: Vec<String> = printer::display_bitboard(self.from);
         let to_display: Vec<String> = printer::display_bitboard(self.to);
@@ -67,17 +67,37 @@ impl std::fmt::Display for Move {
 }
 
 pub fn bitboard_to_algebraic(bitboard: Bitboard) -> String {
+    assert!(
+        bitboard.0.count_ones() == 1,
+        "Bitboard is not a single square {bitboard}"
+    );
     let file = (bitboard.0.trailing_zeros() % 8) as u8;
     let rank = (bitboard.0.trailing_zeros() / 8) as u8;
     let mut algebraic = String::new();
-    write!(algebraic, "{}{}", (file + b'a') as char, rank + 1).unwrap();
+    let _ = write!(algebraic, "{}{}", (file + b'a') as char, rank + 1);
+    #[cfg(debug_assertions)]
+    {
+        assert!(
+            algebraic.len() == 2,
+            "Algebraic notation is not 2 characters long"
+        );
+        let (file, rank) = algebraic.split_at(1);
+        assert!(
+            ('a'..='h').contains(&file.chars().next().unwrap()),
+            "File is not in range a-h: {algebraic} {bitboard}"
+        );
+        assert!(
+            ('1'..='8').contains(&rank.chars().next().unwrap()),
+            "Rank is not in range 1-8: {algebraic} {bitboard}"
+        );
+    }
     algebraic
 }
 
-impl std::fmt::Debug for Move {
+impl std::fmt::Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let from = bitboard_to_algebraic(self.from);
         let to = bitboard_to_algebraic(self.to);
-        write!(f, "{} -> {}", from, to)
+        write!(f, "{from} -> {to}")
     }
 }

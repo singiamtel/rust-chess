@@ -1,6 +1,6 @@
 #![allow(dead_code, unused)]
 use crate::{
-    bitboard::{Bitboard, RANK_1, RANK_8},
+    bitboard::Bitboard,
     piece::{Color, Piece, PieceKind},
     printer,
     r#move::Move,
@@ -92,8 +92,8 @@ impl Board {
             panic!("No piece found at square: {}", mov.from);
         };
         let mut color_mask = match piece.color {
-            Color::White => self.white,
-            Color::Black => self.black,
+            Color::White => &mut self.white,
+            Color::Black => &mut self.black,
         };
 
         // TODO: handle castling
@@ -122,15 +122,13 @@ impl Board {
     }
 
     pub fn make_move(&mut self, mov: Move) {
+        // let Some(piece) = self.get_piece(mov.from) else {
+        //     println!("{}", self);
+        //     panic!("No piece found at square: {}", mov.from);
+        // };
+        //
+
         self.move_piece(mov);
-        let Some(piece) = self.get_piece(mov.from) else {
-            println!("{}", self);
-            panic!("No piece found at square: {}", mov.from);
-        };
-        let mut color_mask = match piece.color {
-            Color::White => self.white,
-            Color::Black => self.black,
-        };
 
         // if it was a capture, remove the captured piece
         if mov.capture.is_some() {
@@ -155,6 +153,12 @@ impl Board {
                     self.kings.clear_bit(mov.to);
                 }
             }
+
+            let mut color_mask = match self.get_color(mov.from) {
+                Some(Color::White) => &mut self.white,
+                Some(Color::Black) => &mut self.black,
+                None => panic!("No piece found at square: {}", mov.from),
+            };
             color_mask.clear_bit(mov.to);
         }
     }
