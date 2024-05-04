@@ -14,11 +14,11 @@ pub fn perft(game: &mut Game, depth: u8) -> Result<u64, Error> {
         // println!("{} {}", game.board.get_piece(m.from).ok_or(Error)?, m);
         println!("Making the move {i}: {m}");
         make_move(game, *m);
-        println!("{}", game.board);
+        // println!("{}", game.board);
         // println!("{}", game.board.white);
         // println!("{}", game.board.black);
         nodes += perft(game, depth - 1)?;
-        println!("Unmaking move {i}: {m}");
+        // println!("Unmaking move {i}: {m}");
         unmake_move(game, *m);
     }
     Ok(nodes)

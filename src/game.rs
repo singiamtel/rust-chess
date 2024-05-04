@@ -2,7 +2,7 @@ use crate::{
     bitboard::Bitboard,
     board::Board,
     piece::{Color, Piece, PieceKind},
-    r#move::Move,
+    r#move::{bitboard_to_algebraic, Move},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -241,6 +241,11 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                 origin_square.so_so_we(),
             ] {
                 if !to.is_empty() && !to.intersects(current_turn_mask) {
+                    println!(
+                        "knight from: {} to: {}",
+                        bitboard_to_algebraic(origin_square),
+                        bitboard_to_algebraic(to)
+                    );
                     let mut new_move = Move::new(origin_square, to, piece);
                     if to.intersects(opposite_color_mask) {
                         new_move = new_move.with_capture(game.board.get_piece(to).unwrap());

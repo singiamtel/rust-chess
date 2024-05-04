@@ -14,32 +14,34 @@ impl Bitboard {
     pub const FILE_H: Self = Self(0x01_01_01_01_01_01_01_01);
     pub const NOT_FILE_H: Self = Self(0xfe_fe_fe_fe_fe_fe_fe_fe);
     pub const FILE_GH: Self = Self(0xC0_C0_C0_C0_C0_C0_C0_C0);
+    pub const NOT_FILE_GH: Self = Self(0x3f_3f_3f_3f_3f_3f_3f_3f);
     pub const FILE_AB: Self = Self(0x03_03_03_03_03_03_03_03);
+    pub const NOT_FILE_AB: Self = Self(0xfc_fc_fc_fc_fc_fc_fc_fc);
 
     // Knight moves
     pub fn no_no_ea(self) -> Self {
-        (self << 17) & Self::NOT_FILE_A
+        (self & Self::NOT_FILE_H) << 17
     }
     pub fn no_ea_ea(self) -> Self {
-        (self << 10) & Self::FILE_AB
+        (self & Self::NOT_FILE_GH) << 10
     }
     pub fn so_ea_ea(self) -> Self {
-        (self >> 6) & Self::FILE_AB
+        (self & Self::NOT_FILE_GH) >> 6
     }
     pub fn so_so_ea(self) -> Self {
-        (self >> 15) & Self::NOT_FILE_A
+        (self & Self::NOT_FILE_H) >> 15
     }
     pub fn no_no_we(self) -> Self {
-        (self << 15) & Self::NOT_FILE_H
+        (self & Self::NOT_FILE_A) << 15
     }
     pub fn no_we_we(self) -> Self {
-        (self << 6) & Self::FILE_GH
+        (self & Self::NOT_FILE_AB) << 6
     }
     pub fn so_we_we(self) -> Self {
-        (self >> 10) & Self::FILE_GH
+        (self & Self::NOT_FILE_AB) >> 10
     }
     pub fn so_so_we(self) -> Self {
-        (self >> 17) & Self::NOT_FILE_H
+        (self & Self::NOT_FILE_A) >> 17
     }
 
     // A-H
