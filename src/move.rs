@@ -1,19 +1,24 @@
-use crate::{bitboard::Bitboard, piece::PieceKind, printer};
+use crate::{
+    bitboard::Bitboard,
+    piece::{Piece, PieceKind},
+    printer,
+};
 
 use std::fmt::Write;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move {
+    pub what: Piece,
     pub from: Bitboard,
     pub to: Bitboard,
-    pub capture: Option<PieceKind>, // To unmake move
+    pub capture: Option<Piece>, // To unmake move
     pub promotion: Option<PieceKind>,
     pub en_passant: Option<Bitboard>,
     pub castling: u8, // Keep track of changes to castling rights
 }
 
 impl Move {
-    pub const fn new(from: Bitboard, to: Bitboard, promotion: Option<PieceKind>) -> Self {
+    pub const fn new(from: Bitboard, to: Bitboard, what: Piece) -> Self {
         // #[cfg(debug_assertions)]
         // {
         //     assert!(
@@ -32,11 +37,37 @@ impl Move {
         Self {
             from,
             to,
-            promotion,
+            what,
+            promotion: None,
             en_passant: None,
             castling: 0,
             capture: None,
         }
+    }
+    const fn with_promotion(mut self, promotion: PieceKind) -> Self {
+        self.promotion = Some(promotion);
+        self
+    }
+
+    pub fn with_promotions(self) -> Vec<Self> {
+        vec![
+            self.with_promotion(PieceKind::Queen),
+            self.with_promotion(PieceKind::Rook),
+            self.with_promotion(PieceKind::Bishop),
+            self.with_promotion(PieceKind::Knight),
+        ]
+    }
+    // pub const fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
+    //     self.en_passant = Some(en_passant);
+    //     self
+    // }
+    // pub const fn with_castling(mut self, castling: u8) -> Self {
+    //     self.castling = castling;
+    //     self
+    // }
+    pub const fn with_capture(mut self, capture: Piece) -> Self {
+        self.capture = Some(capture);
+        self
     }
 }
 
@@ -98,6 +129,24 @@ impl std::fmt::Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let from = bitboard_to_algebraic(self.from);
         let to = bitboard_to_algebraic(self.to);
-        write!(f, "{from} -> {to}")
+        let what = self.what;
+        let mut output = String::new();
+        let _ = write!(output, "{what} {from} -> {to}");
+        if let Some(promotion) = self.promotion {
+            let promotion = Piece::new(what.color, promotion);
+            let _ = write!(output, " {promotion}");
+        }
+        if let Some(capture) = self.capture {
+            let _ = write!(output, " x {capture}");
+        }
+        if let Some(en_passant) = self.en_passant {
+            let en_passant = bitboard_to_algebraic(en_passant);
+            let _ = write!(output, " e.p. {en_passant}");
+        }
+        if self.castling != 0 {
+            let castling = self.castling;
+            let _ = write!(output, " castling {castling}");
+        }
+        write!(f, "{output}")
     }
 }

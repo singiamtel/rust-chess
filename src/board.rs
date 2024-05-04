@@ -1,7 +1,7 @@
 #![allow(dead_code, unused)]
 use crate::{
     bitboard::Bitboard,
-    piece::{Color, Piece, PieceKind},
+    piece::{self, piece_to_letter, Color, Piece, PieceKind},
     printer,
     r#move::Move,
 };
@@ -46,42 +46,21 @@ impl Board {
     }
 
     pub fn get_piece(&self, square: Bitboard) -> Option<Piece> {
+        let Some(color) = self.get_color(square) else {
+            return None;
+        };
         if !(square & self.pawns).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::Pawn,
-            ))
+            Some(Piece::new(color, PieceKind::Pawn))
         } else if !(square & self.knights).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::Knight,
-            ))
+            Some(Piece::new(color, PieceKind::Knight))
         } else if !(square & self.bishops).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::Bishop,
-            ))
+            Some(Piece::new(color, PieceKind::Bishop))
         } else if !(square & self.rooks).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::Rook,
-            ))
+            Some(Piece::new(color, PieceKind::Rook))
         } else if !(square & self.queens).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::Queen,
-            ))
+            Some(Piece::new(color, PieceKind::Queen))
         } else if !(square & self.kings).is_empty() {
-            Some(Piece::new(
-                self.get_color(square)
-                    .expect("Pieces and colors are out of sync"),
-                PieceKind::King,
-            ))
+            Some(Piece::new(color, PieceKind::King))
         } else {
             None
         }
@@ -89,11 +68,44 @@ impl Board {
 
     pub fn move_piece(&mut self, mov: Move) {
         let Some(piece) = self.get_piece(mov.from) else {
-            panic!("No piece found at square: {}", mov.from);
+            panic!("No piece found at square: {}\n{self}", mov.from);
         };
-        let mut color_mask = match piece.color {
-            Color::White => &mut self.white,
-            Color::Black => &mut self.black,
+
+        // We handle capture first, so we don't face issues when trying to eat a piece of the same
+        // type
+
+        if let Some(capture) = mov.capture {
+            let capture_color_mask = match capture.color {
+                Color::White => &mut self.white,
+                Color::Black => &mut self.black,
+            };
+
+            capture_color_mask.clear_bit(mov.to);
+            match capture.kind {
+                PieceKind::Pawn => {
+                    self.pawns.clear_bit(mov.to);
+                }
+                PieceKind::Knight => {
+                    self.knights.clear_bit(mov.to);
+                }
+                PieceKind::Bishop => {
+                    self.bishops.clear_bit(mov.to);
+                }
+                PieceKind::Rook => {
+                    self.rooks.clear_bit(mov.to);
+                }
+                PieceKind::Queen => {
+                    self.queens.clear_bit(mov.to);
+                }
+                PieceKind::King => {
+                    self.kings.clear_bit(mov.to);
+                }
+            }
+        }
+
+        let (mut color_mask, mut opposite_mask) = match piece.color {
+            Color::White => (&mut self.white, &mut self.black),
+            Color::Black => (&mut self.black, &mut self.white),
         };
 
         // TODO: handle castling
@@ -119,6 +131,11 @@ impl Board {
             }
         }
         color_mask.move_bit(mov.from, mov.to);
+
+        #[cfg(debug_assertions)]
+        {
+            self.assert_sync();
+        }
     }
 
     pub fn make_move(&mut self, mov: Move) {
@@ -131,9 +148,8 @@ impl Board {
         self.move_piece(mov);
 
         // if it was a capture, remove the captured piece
-        if mov.capture.is_some() {
-            let captured_piece = self.get_piece(mov.to).unwrap();
-            match captured_piece.kind {
+        if let Some(capture) = mov.capture {
+            match capture.kind {
                 PieceKind::Pawn => {
                     self.pawns.clear_bit(mov.to);
                 }
@@ -154,17 +170,73 @@ impl Board {
                 }
             }
 
-            let mut color_mask = match self.get_color(mov.from) {
-                Some(Color::White) => &mut self.white,
-                Some(Color::Black) => &mut self.black,
-                None => panic!("No piece found at square: {}", mov.from),
+            let mut color_mask = match capture.color {
+                Color::White => &mut self.white,
+                Color::Black => &mut self.black,
             };
             color_mask.clear_bit(mov.to);
         }
+
+        #[cfg(debug_assertions)]
+        {
+            self.assert_sync();
+        }
+    }
+
+    pub fn assert_sync(&self) {
+        // verify that color masks are correct
+        assert_eq!(
+            self.white & self.black,
+            Bitboard(0),
+            "White and black overlap {} {}",
+            self.white,
+            self.black
+        );
+        assert_eq!(
+            self.white & self.occupied(),
+            self.white,
+            "White and occupied are out of sync"
+        );
+        assert_eq!(
+            self.black & self.occupied(),
+            self.black,
+            "Black and occupied are out of sync"
+        );
     }
 
     pub fn unmove_piece(&mut self, mov: Move) {
-        self.move_piece(Move::new(mov.to, mov.from, None));
+        self.move_piece(Move::new(mov.to, mov.from, mov.what));
+    }
+
+    pub fn spawn_piece(&mut self, piece: Piece, square: Bitboard) {
+        match piece.kind {
+            PieceKind::Pawn => {
+                self.pawns |= square;
+            }
+            PieceKind::Knight => {
+                self.knights |= square;
+            }
+            PieceKind::Bishop => {
+                self.bishops |= square;
+            }
+            PieceKind::Rook => {
+                self.rooks |= square;
+            }
+            PieceKind::Queen => {
+                self.queens |= square;
+            }
+            PieceKind::King => {
+                self.kings |= square;
+            }
+        }
+        match piece.color {
+            Color::White => {
+                self.white |= square;
+            }
+            Color::Black => {
+                self.black |= square;
+            }
+        }
     }
 }
 
@@ -174,17 +246,8 @@ impl std::fmt::Display for Board {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let square = Bitboard::FROM_SQUARE([file, rank]);
-                let c = self
-                    .get_piece(square)
-                    .map_or('.', |piece| match piece.kind {
-                        PieceKind::Pawn => 'P',
-                        PieceKind::Knight => 'N',
-                        PieceKind::Bishop => 'B',
-                        PieceKind::Rook => 'R',
-                        PieceKind::Queen => 'Q',
-                        PieceKind::King => 'K',
-                    });
-                board += &format!("{c} ");
+                let piece = self.get_piece(square);
+                board += &format!("{} ", piece_to_letter(piece));
             }
             board += "\n";
         }

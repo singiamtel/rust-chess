@@ -16,6 +16,32 @@ impl Bitboard {
     pub const FILE_GH: Self = Self(0xC0_C0_C0_C0_C0_C0_C0_C0);
     pub const FILE_AB: Self = Self(0x03_03_03_03_03_03_03_03);
 
+    // Knight moves
+    pub fn no_no_ea(self) -> Self {
+        (self << 17) & Self::NOT_FILE_A
+    }
+    pub fn no_ea_ea(self) -> Self {
+        (self << 10) & Self::FILE_AB
+    }
+    pub fn so_ea_ea(self) -> Self {
+        (self >> 6) & Self::FILE_AB
+    }
+    pub fn so_so_ea(self) -> Self {
+        (self >> 15) & Self::NOT_FILE_A
+    }
+    pub fn no_no_we(self) -> Self {
+        (self << 15) & Self::NOT_FILE_H
+    }
+    pub fn no_we_we(self) -> Self {
+        (self << 6) & Self::FILE_GH
+    }
+    pub fn so_we_we(self) -> Self {
+        (self >> 10) & Self::FILE_GH
+    }
+    pub fn so_so_we(self) -> Self {
+        (self >> 17) & Self::NOT_FILE_H
+    }
+
     // A-H
     const FILES: [Self; 8] = [
         Self(0x01_01_01_01_01_01_01_01),
@@ -90,7 +116,7 @@ impl Bitboard {
             // println!("to: {}", to);
             // println!("self: {}", *self);
             assert_eq!(*self & from, from);
-            assert_eq!(*self & to, Self(0), "Trying to move to an occupied square");
+            // assert_eq!(*self & to, Self(0), "Trying to move to an occupied square");
         }
         *self ^= from;
         *self |= to;
@@ -102,6 +128,10 @@ impl Bitboard {
 
     pub const fn is_empty(self) -> bool {
         self.0 == 0
+    }
+
+    pub fn intersects(self, other: Self) -> bool {
+        self & other != Self(0)
     }
 }
 

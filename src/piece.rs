@@ -16,6 +16,7 @@ pub enum Color {
     Black,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub color: Color,
     pub kind: PieceKind,
@@ -67,4 +68,22 @@ impl Piece {
     pub const fn new(color: Color, kind: PieceKind) -> Self {
         Self { color, kind }
     }
+}
+
+pub fn piece_to_letter(piece: Option<Piece>) -> char {
+    let mut c: char = piece.map_or('.', |piece| match piece.kind {
+        PieceKind::Pawn => 'P',
+        PieceKind::Knight => 'N',
+        PieceKind::Bishop => 'B',
+        PieceKind::Rook => 'R',
+        PieceKind::Queen => 'Q',
+        PieceKind::King => 'K',
+    });
+    if let Some(piece) = piece {
+        c = match piece.color {
+            Color::White => c,
+            Color::Black => c.to_ascii_lowercase(),
+        };
+    }
+    c
 }

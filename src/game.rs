@@ -138,60 +138,29 @@ pub fn gen_sliding_moves(
     origin_square: Bitboard,
     direction: &Direction,
 ) {
-    let current_turn_mask = if piece.color == Color::White {
-        game.board.white
+    let (color_mask, opposite_color_mask) = if piece.color == Color::White {
+        (game.board.white, game.board.black)
     } else {
-        game.board.black
+        (game.board.black, game.board.white)
     };
-    match direction {
-        Direction::North => {
-            let to = origin_square.north();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
+    let to = match direction {
+        Direction::North => origin_square.north(),
+        Direction::South => origin_square.south(),
+        Direction::East => origin_square.east(),
+        Direction::West => origin_square.west(),
+        Direction::NorthEast => origin_square.north_east(),
+        Direction::NorthWest => origin_square.north_west(),
+        Direction::SouthEast => origin_square.south_east(),
+        Direction::SouthWest => origin_square.south_west(),
+    };
+
+    if !to.is_empty() && !to.intersects(color_mask) {
+        let mut new_move = Move::new(origin_square, to, *piece);
+        // check if it's a capture
+        if to.intersects(opposite_color_mask) {
+            new_move = new_move.with_capture(game.board.get_piece(to).unwrap());
         }
-        Direction::South => {
-            let to = origin_square.south();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::East => {
-            let to = origin_square.east();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::West => {
-            let to = origin_square.west();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::NorthEast => {
-            let to = origin_square.north_east();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::NorthWest => {
-            let to = origin_square.north_west();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::SouthEast => {
-            let to = origin_square.south_east();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
-        Direction::SouthWest => {
-            let to = origin_square.south_west();
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
-            }
-        }
+        moves.push(new_move);
     }
 }
 
@@ -201,10 +170,10 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
     let Some(piece) = game.board.get_piece(origin_square) else {
         return vec![];
     };
-    let current_turn_mask = if game.turn == Color::White {
-        game.board.white
+    let (current_turn_mask, opposite_color_mask) = if game.turn == Color::White {
+        (game.board.white, game.board.black)
     } else {
-        game.board.black
+        (game.board.black, game.board.white)
     };
     let moves: Vec<Move> = match piece.kind {
         PieceKind::Pawn => {
@@ -214,8 +183,15 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             } else {
                 origin_square.south()
             };
-            if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                moves.push(Move::new(origin_square, to, None));
+            let colors_mask = game.board.white | game.board.black;
+            if !to.is_empty() && !to.intersects(colors_mask) {
+                // is promotion?
+                let new_move = Move::new(origin_square, to, piece);
+                if origin_square.intersects(Bitboard::RANK_1 | Bitboard::RANK_8) {
+                    moves.append(&mut new_move.with_promotions());
+                } else {
+                    moves.push(new_move);
+                }
 
                 if origin_square.pawn_initial(current_turn_mask) {
                     let to = if game.turn == Color::White {
@@ -224,36 +200,52 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                         origin_square.south().south()
                     };
 
-                    if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                        moves.push(Move::new(origin_square, to, None));
+                    if to != Bitboard(0) && to & colors_mask == Bitboard(0) {
+                        moves.push(Move::new(origin_square, to, piece));
                     }
                 }
             }
-            // TODO: capture moves, en passant, and promotion
+            // captures
+            for to in [
+                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_A) {
+                    origin_square.north_east()
+                } else {
+                    origin_square.south_east()
+                },
+                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_H) {
+                    origin_square.north_west()
+                } else {
+                    origin_square.south_west()
+                },
+            ] {
+                if !to.is_empty() && to.intersects(opposite_color_mask) {
+                    moves.push(
+                        Move::new(origin_square, to, piece)
+                            .with_capture(game.board.get_piece(to).unwrap()),
+                    );
+                }
+            }
+            // TODO: capture moves, en passant
             moves
         }
         PieceKind::Knight => {
             let mut moves: Vec<Move> = vec![];
             for to in [
-                // U64 noNoEa(U64 b) {return (b & notHFile ) << 17;}
-                // U64 noEaEa(U64 b) {return (b & notGHFile) << 10;}
-                // U64 soEaEa(U64 b) {return (b & notGHFile) >>  6;}
-                // U64 soSoEa(U64 b) {return (b & notHFile ) >> 15;}
-                // U64 noNoWe(U64 b) {return (b & notAFile ) << 15;}
-                // U64 noWeWe(U64 b) {return (b & notABFile) <<  6;}
-                // U64 soWeWe(U64 b) {return (b & notABFile) >> 10;}
-                // U64 soSoWe(U64 b) {return (b & notAFile ) >> 17;}
-                (origin_square & !Bitboard::FILE_H) << 17,
-                (origin_square & !Bitboard::FILE_GH) << 10,
-                (origin_square & !Bitboard::FILE_GH) >> 6,
-                (origin_square & !Bitboard::FILE_H) >> 15,
-                (origin_square & !Bitboard::FILE_A) << 15,
-                (origin_square & !Bitboard::FILE_AB) << 6,
-                (origin_square & !Bitboard::FILE_AB) >> 10,
-                (origin_square & !Bitboard::FILE_A) >> 17,
+                origin_square.no_no_ea(),
+                origin_square.no_ea_ea(),
+                origin_square.so_ea_ea(),
+                origin_square.so_so_ea(),
+                origin_square.no_no_we(),
+                origin_square.no_we_we(),
+                origin_square.so_we_we(),
+                origin_square.so_so_we(),
             ] {
-                if to != Bitboard(0) && to & current_turn_mask == Bitboard(0) {
-                    moves.push(Move::new(origin_square, to, None));
+                if !to.is_empty() && !to.intersects(current_turn_mask) {
+                    let mut new_move = Move::new(origin_square, to, piece);
+                    if to.intersects(opposite_color_mask) {
+                        new_move = new_move.with_capture(game.board.get_piece(to).unwrap());
+                    }
+                    moves.push(new_move);
                 }
             }
             moves
@@ -312,7 +304,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             ]
             .iter()
             .filter(|&to| *to != Bitboard(0) && *to & current_turn_mask == Bitboard(0))
-            .for_each(|&to| moves.push(Move::new(origin_square, to, None)));
+            .for_each(|&to| moves.push(Move::new(origin_square, to, piece)));
             moves
         }
     };
@@ -353,10 +345,16 @@ pub fn make_move(game: &mut Game, mov: Move) {
     game.halfmove_clock += 1;
 }
 
-pub fn unmake_move(game: &mut Game) {
-    let mov = game.history.pop().expect("No moves to undo");
+pub fn unmake_move(game: &mut Game, mov: Move) {
+    // let mov = game.history.pop().expect("No moves to undo");
+    game.history.pop().expect("No moves to undo");
     game.board.unmove_piece(mov);
     game.turn = game.turn.opposite();
+    // restore old piece
+    if let Some(captured_piece) = mov.capture {
+        println!("spawning captured piece: {captured_piece}");
+        game.board.spawn_piece(captured_piece, mov.to);
+    }
     game.fullmove_number -= 1;
     game.halfmove_clock -= 1;
 }
