@@ -225,7 +225,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                     );
                 }
             }
-            // TODO: capture moves, en passant
+            // TODO: en passant
             moves
         }
         PieceKind::Knight => {
@@ -338,7 +338,7 @@ pub fn gen_moves(game: &Game) -> Vec<Move> {
 }
 
 pub fn make_move(game: &mut Game, mov: Move) {
-    game.board.make_move(mov);
+    game.board.move_piece(mov);
     game.turn = game.turn.opposite();
     game.history.push(mov);
     game.fullmove_number += 1;
@@ -352,7 +352,7 @@ pub fn unmake_move(game: &mut Game, mov: Move) {
     game.turn = game.turn.opposite();
     // restore old piece
     if let Some(captured_piece) = mov.capture {
-        println!("spawning captured piece: {captured_piece}");
+        // println!("spawning captured piece: {captured_piece}");
         game.board.spawn_piece(captured_piece, mov.to);
     }
     game.fullmove_number -= 1;

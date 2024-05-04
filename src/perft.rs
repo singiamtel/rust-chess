@@ -12,7 +12,7 @@ pub fn perft(game: &mut Game, depth: u8) -> Result<u64, Error> {
     let moves = gen_moves(game);
     for (i, m) in moves.iter().enumerate() {
         // println!("{} {}", game.board.get_piece(m.from).ok_or(Error)?, m);
-        println!("Making the move {i}: {m}");
+        // println!("Making the move {i}: {m}");
         make_move(game, *m);
         // println!("{}", game.board);
         // println!("{}", game.board.white);

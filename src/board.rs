@@ -138,51 +138,6 @@ impl Board {
         }
     }
 
-    pub fn make_move(&mut self, mov: Move) {
-        // let Some(piece) = self.get_piece(mov.from) else {
-        //     println!("{}", self);
-        //     panic!("No piece found at square: {}", mov.from);
-        // };
-        //
-
-        self.move_piece(mov);
-
-        // if it was a capture, remove the captured piece
-        if let Some(capture) = mov.capture {
-            match capture.kind {
-                PieceKind::Pawn => {
-                    self.pawns.clear_bit(mov.to);
-                }
-                PieceKind::Knight => {
-                    self.knights.clear_bit(mov.to);
-                }
-                PieceKind::Bishop => {
-                    self.bishops.clear_bit(mov.to);
-                }
-                PieceKind::Rook => {
-                    self.rooks.clear_bit(mov.to);
-                }
-                PieceKind::Queen => {
-                    self.queens.clear_bit(mov.to);
-                }
-                PieceKind::King => {
-                    self.kings.clear_bit(mov.to);
-                }
-            }
-
-            let mut color_mask = match capture.color {
-                Color::White => &mut self.white,
-                Color::Black => &mut self.black,
-            };
-            color_mask.clear_bit(mov.to);
-        }
-
-        #[cfg(debug_assertions)]
-        {
-            self.assert_sync();
-        }
-    }
-
     pub fn assert_sync(&self) {
         // verify that color masks are correct
         assert_eq!(
