@@ -9,10 +9,10 @@ impl Bitboard {
     pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
     pub const FROM_SQUARE: fn([u8; 2]) -> Self = |[file, rank]| Self(1 << (rank * 8 + file));
 
-    pub const FILE_A: Self = Self(0x80_80_80_80_80_80_80_80);
-    pub const NOT_FILE_A: Self = Self(0x7f_7f_7f_7f_7f_7f_7f_7f);
-    pub const FILE_H: Self = Self(0x01_01_01_01_01_01_01_01);
-    pub const NOT_FILE_H: Self = Self(0xfe_fe_fe_fe_fe_fe_fe_fe);
+    pub const FILE_H: Self = Self(0x80_80_80_80_80_80_80_80);
+    pub const NOT_FILE_H: Self = Self(0x7f_7f_7f_7f_7f_7f_7f_7f);
+    pub const FILE_A: Self = Self(0x01_01_01_01_01_01_01_01);
+    pub const NOT_FILE_A: Self = Self(0xfe_fe_fe_fe_fe_fe_fe_fe);
     pub const FILE_GH: Self = Self(0xC0_C0_C0_C0_C0_C0_C0_C0);
     pub const NOT_FILE_GH: Self = Self(0x3f_3f_3f_3f_3f_3f_3f_3f);
     pub const FILE_AB: Self = Self(0x03_03_03_03_03_03_03_03);
