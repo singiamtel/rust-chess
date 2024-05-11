@@ -1,7 +1,7 @@
 #![allow(dead_code, unused)]
 use crate::{
     bitboard::Bitboard,
-    piece::{self, piece_to_letter, Color, Piece, PieceKind},
+    piece::{to_letter, Color, Piece, PieceKind},
     printer,
     r#move::Move,
 };
@@ -202,7 +202,7 @@ impl std::fmt::Display for Board {
             for file in 0..8 {
                 let square = Bitboard::FROM_SQUARE([file, rank]);
                 let piece = self.get_piece(square);
-                board += &format!("{} ", piece_to_letter(piece));
+                board += &format!("{} ", to_letter(piece));
             }
             board += "\n";
         }

@@ -70,7 +70,7 @@ impl Piece {
     }
 }
 
-pub fn piece_to_letter(piece: Option<Piece>) -> char {
+pub fn to_letter(piece: Option<Piece>) -> char {
     let mut c: char = piece.map_or('.', |piece| match piece.kind {
         PieceKind::Pawn => 'P',
         PieceKind::Knight => 'N',

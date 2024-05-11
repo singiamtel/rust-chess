@@ -131,11 +131,12 @@ pub enum Direction {
     SouthWest,
 }
 
-pub fn gen_sliding_moves(
+fn __gen_sliding_moves_recursive(
     moves: &mut Vec<Move>,
     game: &Game,
-    piece: &Piece,
+    piece: Piece,
     origin_square: Bitboard,
+    current_square: Bitboard,
     direction: &Direction,
 ) {
     let (color_mask, opposite_color_mask) = if piece.color == Color::White {
@@ -144,24 +145,36 @@ pub fn gen_sliding_moves(
         (game.board.black, game.board.white)
     };
     let to = match direction {
-        Direction::North => origin_square.north(),
-        Direction::South => origin_square.south(),
-        Direction::East => origin_square.east(),
-        Direction::West => origin_square.west(),
-        Direction::NorthEast => origin_square.north_east(),
-        Direction::NorthWest => origin_square.north_west(),
-        Direction::SouthEast => origin_square.south_east(),
-        Direction::SouthWest => origin_square.south_west(),
+        Direction::North => current_square.north(),
+        Direction::South => current_square.south(),
+        Direction::East => current_square.east(),
+        Direction::West => current_square.west(),
+        Direction::NorthEast => current_square.north_east(),
+        Direction::NorthWest => current_square.north_west(),
+        Direction::SouthEast => current_square.south_east(),
+        Direction::SouthWest => current_square.south_west(),
     };
 
     if !to.is_empty() && !to.intersects(color_mask) {
-        let mut new_move = Move::new(origin_square, to, *piece);
+        // println!("to: {to}");
+        let mut new_move = Move::new(origin_square, to, piece);
         // check if it's a capture
         if to.intersects(opposite_color_mask) {
             new_move = new_move.with_capture(game.board.get_piece(to).unwrap());
         }
         moves.push(new_move);
+        __gen_sliding_moves_recursive(moves, game, piece, origin_square, to, direction);
     }
+}
+
+pub fn gen_sliding_moves(
+    moves: &mut Vec<Move>,
+    game: &Game,
+    piece: Piece,
+    origin_square: Bitboard,
+    direction: &Direction,
+) {
+    __gen_sliding_moves_recursive(moves, game, piece, origin_square, origin_square, direction);
 }
 
 // pseudo-legal moves
@@ -258,7 +271,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                 Direction::SouthEast,
                 Direction::SouthWest,
             ] {
-                gen_sliding_moves(&mut moves, game, &piece, origin_square, &direction);
+                gen_sliding_moves(&mut moves, game, piece, origin_square, &direction);
             }
             moves
         }
@@ -270,7 +283,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                 Direction::East,
                 Direction::West,
             ] {
-                gen_sliding_moves(&mut moves, game, &piece, origin_square, &direction);
+                gen_sliding_moves(&mut moves, game, piece, origin_square, &direction);
             }
             moves
         }
@@ -286,7 +299,7 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
                 Direction::SouthEast,
                 Direction::SouthWest,
             ] {
-                gen_sliding_moves(&mut moves, game, &piece, origin_square, direction);
+                gen_sliding_moves(&mut moves, game, piece, origin_square, direction);
             }
             moves
         }

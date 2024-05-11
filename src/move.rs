@@ -1,7 +1,6 @@
 use crate::{
     bitboard::Bitboard,
     piece::{Piece, PieceKind},
-    printer,
 };
 
 use std::fmt::Write;
@@ -71,37 +70,14 @@ impl Move {
     }
 }
 
-impl std::fmt::Debug for Move {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let from_display: Vec<String> = printer::display_bitboard(self.from);
-        let to_display: Vec<String> = printer::display_bitboard(self.to);
-        writeln!(f, "from:              to:")?;
-        let format: fn(&str) -> String = |s: &str| -> String {
-            s.chars().fold(String::new(), |mut output, c| -> String {
-                write!(output, "{c} ").unwrap();
-                output
-            })
-        };
-        let formatted: String = from_display.iter().zip(to_display.iter()).fold(
-            String::new(),
-            |mut acc, (from, to)| -> String {
-                if !acc.is_empty() {
-                    writeln!(acc).unwrap();
-                }
-                write!(acc, "{} | {}", format(from), format(to)).unwrap();
-                acc
-            },
-        );
-        write!(f, "{formatted}").unwrap();
-        Ok(())
-    }
+pub enum BitboardError {
+    InvalidSingleSquare(String),
 }
 
-pub fn bitboard_to_algebraic(bitboard: Bitboard) -> String {
-    assert!(
-        bitboard.0.count_ones() == 1,
-        "Bitboard is not a single square {bitboard}"
-    );
+pub fn bitboard_to_algebraic(bitboard: Bitboard) -> Result<String, BitboardError> {
+    if !bitboard.0.count_ones() == 1 {
+        return Err(BitboardError::InvalidSingleSquare(bitboard.0.to_string()));
+    }
     let file = (bitboard.0.trailing_zeros() % 8) as u8;
     let rank = (bitboard.0.trailing_zeros() / 8) as u8;
     let mut algebraic = String::new();
@@ -114,21 +90,31 @@ pub fn bitboard_to_algebraic(bitboard: Bitboard) -> String {
         );
         let (file, rank) = algebraic.split_at(1);
         assert!(
-            ('a'..='h').contains(&file.chars().next().unwrap()),
+            ('a'..='h').contains(
+                &file
+                    .chars()
+                    .next()
+                    .ok_or_else(|| BitboardError::InvalidSingleSquare(algebraic.clone()))?
+            ),
             "File is not in range a-h: {algebraic} {bitboard}"
         );
         assert!(
-            ('1'..='8').contains(&rank.chars().next().unwrap()),
+            ('1'..='8').contains(
+                &rank
+                    .chars()
+                    .next()
+                    .ok_or_else(|| BitboardError::InvalidSingleSquare(algebraic.clone()))?
+            ),
             "Rank is not in range 1-8: {algebraic} {bitboard}"
         );
     }
-    algebraic
+    Ok(algebraic)
 }
 
-impl std::fmt::Display for Move {
+impl std::fmt::Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let from = bitboard_to_algebraic(self.from);
-        let to = bitboard_to_algebraic(self.to);
+        let from: String = bitboard_to_algebraic(self.from).unwrap_or_else(|_| "EE".to_string());
+        let to: String = bitboard_to_algebraic(self.to).unwrap_or_else(|_| "EE".to_string());
         let what = self.what;
         let mut output = String::new();
         let _ = write!(output, "{what} {from} -> {to}");
@@ -140,7 +126,7 @@ impl std::fmt::Display for Move {
             let _ = write!(output, " x {capture}");
         }
         if let Some(en_passant) = self.en_passant {
-            let en_passant = bitboard_to_algebraic(en_passant);
+            let en_passant = bitboard_to_algebraic(en_passant).unwrap_or_else(|_| "EE".to_string());
             let _ = write!(output, " e.p. {en_passant}");
         }
         if self.castling != 0 {
@@ -148,5 +134,42 @@ impl std::fmt::Display for Move {
             let _ = write!(output, " castling {castling}");
         }
         write!(f, "{output}")
+    }
+}
+
+// impl std::fmt::Debug for Move {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         let from_display: Vec<String> = printer::display_bitboard(self.from);
+//         let to_display: Vec<String> = printer::display_bitboard(self.to);
+//         writeln!(f, "from:              to:")?;
+//         let format: fn(&str) -> String = |s: &str| -> String {
+//             s.chars().fold(String::new(), |mut output, c| -> String {
+//                 write!(output, "{c} ").unwrap();
+//                 output
+//             })
+//         };
+//         let formatted: String = from_display.iter().zip(to_display.iter()).fold(
+//             String::new(),
+//             |mut acc, (from, to)| -> String {
+//                 if !acc.is_empty() {
+//                     writeln!(acc).unwrap();
+//                 }
+//                 write!(acc, "{} | {}", format(from), format(to)).unwrap();
+//                 acc
+//             },
+//         );
+//         write!(f, "{formatted}").unwrap();
+//         Ok(())
+//     }
+// }
+
+impl std::fmt::Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            bitboard_to_algebraic(self.from).unwrap_or_else(|_| "EE".to_string()),
+            bitboard_to_algebraic(self.to).unwrap_or_else(|_| "EE".to_string())
+        )
     }
 }
