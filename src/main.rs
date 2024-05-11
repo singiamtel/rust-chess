@@ -1,6 +1,4 @@
-use perft::perft;
-
-use crate::game::Game;
+use crate::{game::Game, perft::perft_divided};
 use std::env;
 
 mod bitboard;
@@ -22,15 +20,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse::<u8>()
         .unwrap();
 
-    let n_moves = perft(&mut game, perft_depth)?;
-    println!("Total moves: {n_moves}");
+    // let n_moves = perft(&mut game, perft_depth)?;
+    let n_moves = perft_divided(&mut game, perft_depth)?;
+    println!("Nodes searched: {n_moves}");
     // sizes();
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use crate::perft::perft;
+    // use crate::Game;
+    use crate::{game::Game, perft::perft};
+
     // https://www.chessprogramming.org/Perft_Results#Initial_Position
     const PERFT_RESULTS: [u64; 9] = [
         20,
