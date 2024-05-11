@@ -84,31 +84,31 @@ impl Bitboard {
     }
 
     pub fn east(self) -> Self {
-        self & Self::NOT_FILE_H << 1
+        (self & Self::NOT_FILE_H) << 1
     }
 
     pub fn west(self) -> Self {
-        self & Self::NOT_FILE_A >> 1
+        (self & Self::NOT_FILE_A) >> 1
     }
 
     pub fn north_east(self) -> Self {
-        self & Self::NOT_FILE_H << 9
+        (self & Self::NOT_FILE_H) << 9
     }
 
     pub fn north_west(self) -> Self {
-        self & Self::NOT_FILE_A << 7
+        (self & Self::NOT_FILE_A) << 7
     }
 
     pub fn south_east(self) -> Self {
-        self & Self::NOT_FILE_H >> 7
+        (self & Self::NOT_FILE_H) >> 7
     }
 
     pub fn south_west(self) -> Self {
-        self & Self::NOT_FILE_A >> 9
+        (self & Self::NOT_FILE_A) >> 9
     }
 
     pub fn pawn_initial(self, color_mask: Self) -> bool {
-        self & Self::PAWN_INITIAL & color_mask == self
+        (self & Self::PAWN_INITIAL & color_mask) == self
     }
 
     pub fn move_bit(&mut self, from: Self, to: Self) {
@@ -133,7 +133,7 @@ impl Bitboard {
     }
 
     pub fn intersects(self, other: Self) -> bool {
-        self & other != Self(0)
+        (self & other) != Self(0)
     }
 }
 

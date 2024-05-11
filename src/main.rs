@@ -53,8 +53,10 @@ mod tests {
             assert_eq!(
                 n_moves,
                 PERFT_RESULTS[depth as usize - 1],
-                "Perft failed at depth {}",
-                depth
+                "Perft failed at depth {} (expected: {} but got: {})",
+                depth,
+                PERFT_RESULTS[depth as usize - 1],
+                n_moves
             );
         }
     }
