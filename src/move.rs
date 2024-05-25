@@ -70,6 +70,7 @@ impl Move {
     }
 }
 
+#[derive(Debug)]
 pub enum BitboardError {
     InvalidSingleSquare(String),
 }
@@ -109,6 +110,26 @@ pub fn bitboard_to_algebraic(bitboard: Bitboard) -> Result<String, BitboardError
         );
     }
     Ok(algebraic)
+}
+
+pub fn algebraic_to_bitboard(algebraic: &str) -> Result<Bitboard, BitboardError> {
+    if algebraic.len() != 2 {
+        return Err(BitboardError::InvalidSingleSquare(algebraic.to_string()));
+    }
+    let mut chars = algebraic.chars();
+    let file = chars.next().unwrap();
+    let rank = chars.next().unwrap();
+    let file = file as u8 - b'a';
+    let rank = rank as u8 - b'1';
+    let bitboard = Bitboard(1 << (rank * 8 + file));
+    #[cfg(debug_assertions)]
+    {
+        assert!(
+            bitboard.0.count_ones() == 1,
+            "Bitboard is not a single square: {algebraic} {bitboard}"
+        );
+    }
+    Ok(bitboard)
 }
 
 impl std::fmt::Debug for Move {

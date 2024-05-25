@@ -2,7 +2,7 @@ use crate::{
     bitboard::Bitboard,
     board::Board,
     piece::{Color, Piece, PieceKind},
-    r#move::Move,
+    r#move::{algebraic_to_bitboard, BitboardError, Move},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,9 +161,11 @@ fn __gen_sliding_moves_recursive(
         // check if it's a capture
         if to.intersects(opposite_color_mask) {
             new_move = new_move.with_capture(game.board.get_piece(to).unwrap());
+            moves.push(new_move);
+        } else {
+            moves.push(new_move);
+            __gen_sliding_moves_recursive(moves, game, piece, origin_square, to, direction);
         }
-        moves.push(new_move);
-        __gen_sliding_moves_recursive(moves, game, piece, origin_square, to, direction);
     }
 }
 
@@ -220,22 +222,25 @@ pub fn gen_moves_from_piece(game: &Game, origin_square: Bitboard) -> Vec<Move> {
             }
             // captures
             for to in [
-                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_A) {
+                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_H) {
                     origin_square.north_east()
                 } else {
                     origin_square.south_east()
                 },
-                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_H) {
+                if game.turn == Color::White && !origin_square.intersects(Bitboard::FILE_A) {
                     origin_square.north_west()
                 } else {
                     origin_square.south_west()
                 },
             ] {
                 if !to.is_empty() && to.intersects(opposite_color_mask) {
-                    moves.push(
-                        Move::new(origin_square, to, piece)
-                            .with_capture(game.board.get_piece(to).unwrap()),
-                    );
+                    let new_move = Move::new(origin_square, to, piece)
+                        .with_capture(game.board.get_piece(to).unwrap());
+                    if to.intersects(Bitboard::RANK_1 | Bitboard::RANK_8) {
+                        moves.append(&mut new_move.with_promotions());
+                    } else {
+                        moves.push(new_move);
+                    }
                 }
             }
             // TODO: en passant
@@ -370,4 +375,12 @@ pub fn unmake_move(game: &mut Game, mov: Move) {
     }
     game.fullmove_number -= 1;
     game.halfmove_clock -= 1;
+}
+
+pub fn parse_move(game: &mut Game, r#move: &str) -> Result<Move, BitboardError> {
+    let from = algebraic_to_bitboard(&r#move[0..2])?;
+    let to = algebraic_to_bitboard(&r#move[2..4])?;
+
+    let what = game.board.get_piece(from).unwrap();
+    Ok(Move::new(from, to, what))
 }

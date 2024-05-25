@@ -34,7 +34,7 @@ pub fn perft_divided(game: &mut Game, depth: u8) -> Result<u64, Error> {
     for (i, m) in moves.iter().enumerate() {
         make_move(game, *m);
         let new_nodes = perft(game, depth - 1)?;
-        println!("{}: {}", m, new_nodes);
+        println!("{} {}", m, new_nodes);
         nodes += new_nodes;
         unmake_move(game, *m);
     }

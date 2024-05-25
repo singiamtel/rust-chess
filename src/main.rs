@@ -1,4 +1,7 @@
-use crate::{game::Game, perft::perft_divided};
+use crate::{
+    game::{make_move, parse_move, Game},
+    perft::perft_divided,
+};
 use std::env;
 
 mod bitboard;
@@ -12,7 +15,6 @@ mod printer;
 mod test;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut game = Game::new(Game::STARTING_FEN);
     // let mut game = Game::new("8/8/8/8/8/7N/8/8 w HAha - 0 1");
     let perft_depth = env::args()
         .nth(1)
@@ -20,9 +22,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse::<u8>()
         .unwrap();
 
-    // let n_moves = perft(&mut game, perft_depth)?;
+    let fen = env::args().nth(2).unwrap_or(Game::STARTING_FEN.to_string());
+    let moves = env::args().nth(3).unwrap_or("".to_string());
+
+    let mut game = Game::new(&fen);
+
+    if !moves.is_empty() {
+        for mv in moves.split_whitespace() {
+            let mv = parse_move(&mut game, mv).unwrap();
+            make_move(&mut game, mv);
+        }
+    }
+
     let n_moves = perft_divided(&mut game, perft_depth)?;
-    println!("Nodes searched: {n_moves}");
+    // let n_moves = perft_divided(&mut game, perft_depth)?;
+    println!();
+    println!("{n_moves}");
     // sizes();
     Ok(())
 }
@@ -50,7 +65,7 @@ mod tests {
     fn perft_test() {
         let mut game = Game::new(Game::STARTING_FEN);
         // TODO: Test all the way down!
-        for depth in 1..=2 {
+        for depth in 1..=3 {
             let n_moves = perft(&mut game, depth).unwrap();
             assert_eq!(
                 n_moves,
