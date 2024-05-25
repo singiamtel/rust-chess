@@ -1,11 +1,10 @@
-#![allow(dead_code, unused)]
+use std::fmt::{Display, Formatter, Result};
+
 use crate::{
     bitboard::Bitboard,
-    piece::{to_letter, Color, Piece, PieceKind},
-    printer,
+    piece::{to_letter, Color, Kind, Piece},
     r#move::Move,
 };
-use std::fmt::Write;
 
 // Little-endian rank-file mapping
 
@@ -50,17 +49,17 @@ impl Board {
             return None;
         };
         if !(square & self.pawns).is_empty() {
-            Some(Piece::new(color, PieceKind::Pawn))
+            Some(Piece::new(color, Kind::Pawn))
         } else if !(square & self.knights).is_empty() {
-            Some(Piece::new(color, PieceKind::Knight))
+            Some(Piece::new(color, Kind::Knight))
         } else if !(square & self.bishops).is_empty() {
-            Some(Piece::new(color, PieceKind::Bishop))
+            Some(Piece::new(color, Kind::Bishop))
         } else if !(square & self.rooks).is_empty() {
-            Some(Piece::new(color, PieceKind::Rook))
+            Some(Piece::new(color, Kind::Rook))
         } else if !(square & self.queens).is_empty() {
-            Some(Piece::new(color, PieceKind::Queen))
+            Some(Piece::new(color, Kind::Queen))
         } else if !(square & self.kings).is_empty() {
-            Some(Piece::new(color, PieceKind::King))
+            Some(Piece::new(color, Kind::King))
         } else {
             None
         }
@@ -82,51 +81,51 @@ impl Board {
 
             capture_color_mask.clear_bit(mov.to);
             match capture.kind {
-                PieceKind::Pawn => {
+                Kind::Pawn => {
                     self.pawns.clear_bit(mov.to);
                 }
-                PieceKind::Knight => {
+                Kind::Knight => {
                     self.knights.clear_bit(mov.to);
                 }
-                PieceKind::Bishop => {
+                Kind::Bishop => {
                     self.bishops.clear_bit(mov.to);
                 }
-                PieceKind::Rook => {
+                Kind::Rook => {
                     self.rooks.clear_bit(mov.to);
                 }
-                PieceKind::Queen => {
+                Kind::Queen => {
                     self.queens.clear_bit(mov.to);
                 }
-                PieceKind::King => {
+                Kind::King => {
                     self.kings.clear_bit(mov.to);
                 }
             }
         }
 
-        let (mut color_mask, mut opposite_mask) = match piece.color {
-            Color::White => (&mut self.white, &mut self.black),
-            Color::Black => (&mut self.black, &mut self.white),
+        let color_mask = match piece.color {
+            Color::White => &mut self.white,
+            Color::Black => &mut self.black,
         };
 
         // TODO: handle castling
         match piece.kind {
-            PieceKind::Pawn => {
+            Kind::Pawn => {
                 self.pawns.move_bit(mov.from, mov.to);
                 // TODO: make promotions
             }
-            PieceKind::Knight => {
+            Kind::Knight => {
                 self.knights.move_bit(mov.from, mov.to);
             }
-            PieceKind::Bishop => {
+            Kind::Bishop => {
                 self.bishops.move_bit(mov.from, mov.to);
             }
-            PieceKind::Rook => {
+            Kind::Rook => {
                 self.rooks.move_bit(mov.from, mov.to);
             }
-            PieceKind::Queen => {
+            Kind::Queen => {
                 self.queens.move_bit(mov.from, mov.to);
             }
-            PieceKind::King => {
+            Kind::King => {
                 self.kings.move_bit(mov.from, mov.to);
             }
         }
@@ -165,22 +164,22 @@ impl Board {
 
     pub fn spawn_piece(&mut self, piece: Piece, square: Bitboard) {
         match piece.kind {
-            PieceKind::Pawn => {
+            Kind::Pawn => {
                 self.pawns |= square;
             }
-            PieceKind::Knight => {
+            Kind::Knight => {
                 self.knights |= square;
             }
-            PieceKind::Bishop => {
+            Kind::Bishop => {
                 self.bishops |= square;
             }
-            PieceKind::Rook => {
+            Kind::Rook => {
                 self.rooks |= square;
             }
-            PieceKind::Queen => {
+            Kind::Queen => {
                 self.queens |= square;
             }
-            PieceKind::King => {
+            Kind::King => {
                 self.kings |= square;
             }
         }
@@ -195,8 +194,8 @@ impl Board {
     }
 }
 
-impl std::fmt::Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Display for Board {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         let mut board = String::new();
         for rank in (0..8).rev() {
             for file in 0..8 {

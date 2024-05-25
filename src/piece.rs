@@ -1,7 +1,5 @@
-#![allow(dead_code, unused)]
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PieceKind {
+pub enum Kind {
     Pawn,
     Knight,
     Bishop,
@@ -19,7 +17,7 @@ pub enum Color {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub color: Color,
-    pub kind: PieceKind,
+    pub kind: Kind,
 }
 
 impl std::fmt::Display for Piece {
@@ -43,41 +41,26 @@ impl std::fmt::Display for Color {
     }
 }
 
-impl std::fmt::Display for PieceKind {
+impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
-const PIECE_CHARS: [(PieceKind, char); 12] = [
-    (PieceKind::Pawn, 'P'),
-    (PieceKind::Knight, 'N'),
-    (PieceKind::Bishop, 'B'),
-    (PieceKind::Rook, 'R'),
-    (PieceKind::Queen, 'Q'),
-    (PieceKind::King, 'K'),
-    (PieceKind::Pawn, 'p'),
-    (PieceKind::Knight, 'n'),
-    (PieceKind::Bishop, 'b'),
-    (PieceKind::Rook, 'r'),
-    (PieceKind::Queen, 'q'),
-    (PieceKind::King, 'k'),
-];
-
 impl Piece {
-    pub const fn new(color: Color, kind: PieceKind) -> Self {
+    pub const fn new(color: Color, kind: Kind) -> Self {
         Self { color, kind }
     }
 }
 
 pub fn to_letter(piece: Option<Piece>) -> char {
     let mut c: char = piece.map_or('.', |piece| match piece.kind {
-        PieceKind::Pawn => 'P',
-        PieceKind::Knight => 'N',
-        PieceKind::Bishop => 'B',
-        PieceKind::Rook => 'R',
-        PieceKind::Queen => 'Q',
-        PieceKind::King => 'K',
+        Kind::Pawn => 'P',
+        Kind::Knight => 'N',
+        Kind::Bishop => 'B',
+        Kind::Rook => 'R',
+        Kind::Queen => 'Q',
+        Kind::King => 'K',
     });
     if let Some(piece) = piece {
         c = match piece.color {

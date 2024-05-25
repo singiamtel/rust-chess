@@ -1,6 +1,6 @@
 use crate::{
     bitboard::Bitboard,
-    piece::{Piece, PieceKind},
+    piece::{Kind, Piece},
 };
 
 use std::fmt::Write;
@@ -11,7 +11,7 @@ pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,
     pub capture: Option<Piece>, // To unmake move
-    pub promotion: Option<PieceKind>,
+    pub promotion: Option<Kind>,
     pub en_passant: Option<Bitboard>,
     pub castling: u8, // Keep track of changes to castling rights
 }
@@ -43,17 +43,17 @@ impl Move {
             capture: None,
         }
     }
-    const fn with_promotion(mut self, promotion: PieceKind) -> Self {
+    const fn with_promotion(mut self, promotion: Kind) -> Self {
         self.promotion = Some(promotion);
         self
     }
 
     pub fn with_promotions(self) -> Vec<Self> {
         vec![
-            self.with_promotion(PieceKind::Queen),
-            self.with_promotion(PieceKind::Rook),
-            self.with_promotion(PieceKind::Bishop),
-            self.with_promotion(PieceKind::Knight),
+            self.with_promotion(Kind::Queen),
+            self.with_promotion(Kind::Rook),
+            self.with_promotion(Kind::Bishop),
+            self.with_promotion(Kind::Knight),
         ]
     }
     // pub const fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
@@ -69,18 +69,40 @@ impl Move {
         self
     }
 }
+use std::fmt::Display;
+use std::num::TryFromIntError;
 
 #[derive(Debug)]
 pub enum BitboardError {
     InvalidSingleSquare(String),
+    NoPieceAtSquare(Bitboard),
+    TryFromIntError(TryFromIntError),
 }
+
+impl Display for BitboardError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::InvalidSingleSquare(s) => write!(f, "Invalid single square: {s}"),
+            Self::TryFromIntError(e) => write!(f, "TryFromIntError: {e}"),
+            Self::NoPieceAtSquare(b) => write!(f, "No piece at square: {b}"),
+        }
+    }
+}
+
+impl From<TryFromIntError> for BitboardError {
+    fn from(e: TryFromIntError) -> Self {
+        Self::TryFromIntError(e)
+    }
+}
+
+impl std::error::Error for BitboardError {}
 
 pub fn bitboard_to_algebraic(bitboard: Bitboard) -> Result<String, BitboardError> {
     if !bitboard.0.count_ones() == 1 {
         return Err(BitboardError::InvalidSingleSquare(bitboard.0.to_string()));
     }
-    let file = (bitboard.0.trailing_zeros() % 8) as u8;
-    let rank = (bitboard.0.trailing_zeros() / 8) as u8;
+    let file = u8::try_from(bitboard.0.trailing_zeros() % 8)?;
+    let rank = u8::try_from(bitboard.0.trailing_zeros() / 8)?;
     let mut algebraic = String::new();
     let _ = write!(algebraic, "{}{}", (file + b'a') as char, rank + 1);
     #[cfg(debug_assertions)]
@@ -117,8 +139,12 @@ pub fn algebraic_to_bitboard(algebraic: &str) -> Result<Bitboard, BitboardError>
         return Err(BitboardError::InvalidSingleSquare(algebraic.to_string()));
     }
     let mut chars = algebraic.chars();
-    let file = chars.next().unwrap();
-    let rank = chars.next().unwrap();
+    let file = chars
+        .next()
+        .ok_or_else(|| BitboardError::InvalidSingleSquare(algebraic.to_string()))?;
+    let rank = chars
+        .next()
+        .ok_or_else(|| BitboardError::InvalidSingleSquare(algebraic.to_string()))?;
     let file = file as u8 - b'a';
     let rank = rank as u8 - b'1';
     let bitboard = Bitboard(1 << (rank * 8 + file));
@@ -157,32 +183,6 @@ impl std::fmt::Debug for Move {
         write!(f, "{output}")
     }
 }
-
-// impl std::fmt::Debug for Move {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         let from_display: Vec<String> = printer::display_bitboard(self.from);
-//         let to_display: Vec<String> = printer::display_bitboard(self.to);
-//         writeln!(f, "from:              to:")?;
-//         let format: fn(&str) -> String = |s: &str| -> String {
-//             s.chars().fold(String::new(), |mut output, c| -> String {
-//                 write!(output, "{c} ").unwrap();
-//                 output
-//             })
-//         };
-//         let formatted: String = from_display.iter().zip(to_display.iter()).fold(
-//             String::new(),
-//             |mut acc, (from, to)| -> String {
-//                 if !acc.is_empty() {
-//                     writeln!(acc).unwrap();
-//                 }
-//                 write!(acc, "{} | {}", format(from), format(to)).unwrap();
-//                 acc
-//             },
-//         );
-//         write!(f, "{formatted}").unwrap();
-//         Ok(())
-//     }
-// }
 
 impl std::fmt::Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,9 +1,19 @@
-#![allow(dead_code, unused)]
 use crate::printer;
 use std::fmt::Write;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
+
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
+}
 
 impl Bitboard {
     pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
@@ -69,9 +79,7 @@ impl Bitboard {
     }
 
     pub const RANK_1: Self = Self::RANKS[0];
-    const NOT_RANK_1: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_00);
     pub const RANK_8: Self = Self::RANKS[7];
-    const NOT_RANK_8: Self = Self(0x00_FF_FF_FF_FF_FF_FF_FF);
 
     const PAWN_INITIAL: Self = Self(0x00_FF_00_00_00_00_FF_00);
 
@@ -114,11 +122,7 @@ impl Bitboard {
     pub fn move_bit(&mut self, from: Self, to: Self) {
         #[cfg(debug_assertions)]
         {
-            // println!("from: {}", from);
-            // println!("to: {}", to);
-            // println!("self: {}", *self);
             assert_eq!(*self & from, from);
-            // assert_eq!(*self & to, Self(0), "Trying to move to an occupied square");
         }
         *self ^= from;
         *self |= to;
@@ -142,7 +146,7 @@ impl std::fmt::Display for Bitboard {
         let display: Vec<String> = printer::display_bitboard(*self);
         writeln!(f)?;
         let formatted = display.iter().fold(String::new(), |mut acc, s| {
-            s.chars().fold(&mut acc, |mut acc, c| {
+            s.chars().fold(&mut acc, |acc, c| {
                 write!(acc, "{c} ").unwrap();
                 acc
             });
