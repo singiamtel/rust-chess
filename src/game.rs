@@ -4,7 +4,7 @@ use crate::{
     bitboard::{
         generate_knight_lookup, generate_pawn_lookup, Bitboard, Direction, DirectionalShift,
     },
-    board::Board,
+    board::{Board, CastlingRights, OnePerColor},
     piece::{Color, Kind, Piece},
     r#move::{algebraic_to_bitboard, BitboardError, Move},
 };
@@ -16,17 +16,23 @@ pub struct Game {
     pub history: Vec<Move>,
 
     pub en_passant: Option<Bitboard>,
-    pub castling: u8,
 
     pub halfmove_clock: u8,
     pub fullmove_number: u16,
-    pub pawn_attacks_lookup: Option<[[Bitboard; 64]; 2]>,
-    pub knight_attacks_lookup: Option<[Bitboard; 64]>,
+    pub pawn_attacks_lookup: OnePerColor<[Bitboard; 64]>,
+    pub knight_attacks_lookup: [Bitboard; 64],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FenError {
     InvalidFen(String, char),
+    InvalidEnPassant(String),
+}
+
+impl From<BitboardError> for FenError {
+    fn from(err: BitboardError) -> Self {
+        Self::InvalidEnPassant(err.to_string())
+    }
 }
 
 impl std::fmt::Display for FenError {
@@ -35,33 +41,28 @@ impl std::fmt::Display for FenError {
             Self::InvalidFen(fen, c) => {
                 write!(f, "Invalid FEN string: {fen}, invalid character: {c}")
             }
+            Self::InvalidEnPassant(en_passant) => {
+                write!(
+                    f,
+                    "Invalid FEN string: {en_passant}, invalid en passant square"
+                )
+            }
         }
     }
 }
 impl Error for FenError {}
 
 impl Game {
-    const DEFAULT: Self = Self {
-        board: Board::DEFAULT,
-        history: vec![],
-        en_passant: None,
-        castling: 0,
-        halfmove_clock: 0,
-        fullmove_number: 1,
-        turn: Color::White,
-        pawn_attacks_lookup: None,
-        knight_attacks_lookup: None,
-    };
-
     pub const STARTING_FEN: &'static str =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     pub fn new(fen: &str) -> Result<Self, FenError> {
-        let mut game = Self::DEFAULT;
+        let mut board = Board::DEFAULT;
         let mut rank = 7;
         let mut file = 0;
-        let splitted: Vec<&str> = fen.split(' ').collect();
-        assert_eq!(splitted.len(), 6);
-        let pieces = splitted.first().map_or_else(
+        let splitted_vec = fen.split(' ').collect::<Vec<&str>>();
+        assert_eq!(splitted_vec.len(), 6);
+        let mut splitted_iter = splitted_vec.into_iter();
+        let pieces = splitted_iter.next().map_or_else(
             || {
                 panic!("Invalid FEN string: {fen}");
             },
@@ -71,7 +72,7 @@ impl Game {
         for c in pieces.chars() {
             match c {
                 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' => {
-                    game.board.spawn_piece(
+                    board.spawn_piece(
                         Piece::new(
                             Color::White,
                             match c {
@@ -89,7 +90,7 @@ impl Game {
                     file += 1;
                 }
                 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                    game.board.spawn_piece(
+                    board.spawn_piece(
                         Piece::new(
                             Color::Black,
                             match c {
@@ -116,9 +117,50 @@ impl Game {
                 }
             }
         }
-        game.pawn_attacks_lookup = Some(generate_pawn_lookup());
-        game.knight_attacks_lookup = Some(generate_knight_lookup());
-        Ok(game)
+
+        let turn = match splitted_iter.next().unwrap() {
+            "w" => Color::White,
+            "b" => Color::Black,
+            _ => {
+                panic!("Invalid FEN string: {fen}");
+            }
+        };
+
+        let castling_rights = splitted_iter.next().unwrap();
+
+        let mut set_castling_right = |right| board.castling.set_castling_right(right, true);
+        for c in castling_rights.chars() {
+            match c {
+                'K' => set_castling_right(CastlingRights::WHITE_KINGSIDE),
+                'Q' => set_castling_right(CastlingRights::WHITE_QUEENSIDE),
+                'k' => set_castling_right(CastlingRights::BLACK_KINGSIDE),
+                'q' => set_castling_right(CastlingRights::BLACK_QUEENSIDE),
+                _ => panic!("Invalid FEN string: {fen}"),
+            }
+        }
+
+        let en_passant_str = splitted_iter.next().unwrap();
+
+        let en_passant = if en_passant_str == "-" {
+            None
+        } else {
+            Some(algebraic_to_bitboard(en_passant_str)?)
+        };
+
+        let _pawn_attacks_lookup = generate_pawn_lookup();
+        let knight_attacks_lookup = generate_knight_lookup();
+        let pawn_attacks_lookup =
+            OnePerColor::new(_pawn_attacks_lookup[0], _pawn_attacks_lookup[1]);
+        Ok(Game {
+            board,
+            turn,
+            history: vec![],
+            en_passant,
+            halfmove_clock: 0,  // TODO: implement
+            fullmove_number: 1, // TODO: implement
+            pawn_attacks_lookup,
+            knight_attacks_lookup,
+        })
     }
 
     fn __gen_sliding_moves_recursive(
@@ -318,18 +360,126 @@ impl Game {
         moves
     }
 
-    pub fn is_check(&mut self, color: Color) -> bool {
-        let king = self.board.kings & self.board.get_color_mask(color);
-        let mut moves: Vec<Move> = vec![];
-        self.turn = !self.turn;
-        moves.append(&mut self.gen_moves());
-        // let ret = moves.clone().into_iter().any(|m| m.to == king);
-        let ret = false; // TODO: Implement
-        if ret {
-            println!("Check! by: {:?}", moves.into_iter().find(|m| m.to == king));
+    fn slide_until_blocked(
+        &self,
+        current_square: Bitboard,
+        direction: &Direction,
+        color: Color,
+    ) -> Option<Piece> {
+        let (color_mask, opposite_color_mask) = if color == Color::White {
+            (self.board.white, self.board.black)
+        } else {
+            (self.board.black, self.board.white)
+        };
+        let to = match direction {
+            Direction::North => current_square.north(),
+            Direction::South => current_square.south(),
+            Direction::East => current_square.east(),
+            Direction::West => current_square.west(),
+            Direction::NorthEast => current_square.north_east(),
+            Direction::NorthWest => current_square.north_west(),
+            Direction::SouthEast => current_square.south_east(),
+            Direction::SouthWest => current_square.south_west(),
+        };
+
+        if to.is_empty() {
+            None
+        } else {
+            // if its evil piece
+            if to.intersects(opposite_color_mask) {
+                Some(self.board.get_piece(to).unwrap())
+            }
+            // if its friendly piece
+            else if to.intersects(color_mask) {
+                None
+            } else {
+                self.slide_until_blocked(to, direction, color)
+            }
         }
-        self.turn = !self.turn;
-        ret
+    }
+
+    pub fn is_check(&mut self, color: Color) -> bool {
+        let king_position: usize = match color {
+            Color::White => self
+                .board
+                .king_position
+                .white
+                .expect("King position not set"),
+            Color::Black => self
+                .board
+                .king_position
+                .black
+                .expect("King position not set"),
+        };
+        let (color_mask, opposite_color_mask) = if color == Color::White {
+            (self.board.black, self.board.white)
+        } else {
+            (self.board.white, self.board.black)
+        };
+        if (self.pawn_attacks_lookup.get(color)[king_position]
+            & self.board.pawns
+            & opposite_color_mask)
+            != Bitboard(0)
+        {
+            println!("Pawn check!");
+            // println!("{:#016x}", self.pawn_attacks_lookup.get(color)[king_position]);
+            // println!("{:#016x}", self.board.pawns);
+            // println!("{:#016x}", opposite_color_mask);
+            // println!("{:#016x}", self.pawn_attacks_lookup.get(color)[king_position]
+            // & self.board.pawns
+            // & opposite_color_mask);
+            return true;
+        }
+        if (self.knight_attacks_lookup[king_position] & (self.board.knights & color_mask))
+            != Bitboard(0)
+        {
+            println!("Knight check!");
+            println!("{:#016x}", self.knight_attacks_lookup[king_position]);
+            println!("{:#016x}", self.board.knights);
+            println!("{:#016x}", opposite_color_mask);
+            return true;
+        }
+        // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
+
+        for direction in [
+            Direction::North,
+            Direction::South,
+            Direction::East,
+            Direction::West,
+        ] {
+            // self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
+            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, !color);
+            if let Some(piece) = piece {
+                match piece.kind {
+                    Kind::Queen | Kind::Rook => {
+                        println!("Queen or Rook check!");
+                        println!("{:#016x}", opposite_color_mask);
+                        println!("{:#016x}", self.board.kings & color_mask);
+                        println!("{}", piece);
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for direction in [
+            Direction::NorthEast,
+            Direction::NorthWest,
+            Direction::SouthEast,
+            Direction::SouthWest,
+        ] {
+            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, !color);
+            if let Some(piece) = piece {
+                match piece.kind {
+                    Kind::Queen | Kind::Bishop => {
+                        println!("Queen or Bishop check!");
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        false
     }
 
     pub fn gen_moves(&mut self) -> Vec<Move> {

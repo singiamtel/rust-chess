@@ -6,6 +6,53 @@ use crate::{
     r#move::Move,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OnePerColor<T> {
+    pub white: T,
+    pub black: T,
+}
+
+impl<T> OnePerColor<T> {
+    pub const fn new(white: T, black: T) -> Self {
+        Self { white, black }
+    }
+    pub fn get(&self, color: Color) -> &T {
+        match color {
+            Color::White => &self.white,
+            Color::Black => &self.black,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CastlingRights(u8);
+
+impl CastlingRights {
+    // Constants for each castling right bit
+    pub const WHITE_KINGSIDE: u8 = 0b1000;
+    pub const WHITE_QUEENSIDE: u8 = 0b0100;
+    pub const BLACK_KINGSIDE: u8 = 0b0010;
+    pub const BLACK_QUEENSIDE: u8 = 0b0001;
+
+    // Create a new CastlingRights with initial value
+    // fn new() -> Self {
+    //     CastlingRights(0b0000)
+    // }
+
+    // // Check if a specific castling right is allowed
+    // fn can_castle(&self, right: u8) -> bool {
+    //     self.0 & right != 0
+    // }
+
+    // Set or clear specific castling rights
+    pub fn set_castling_right(&mut self, right: u8, allowed: bool) {
+        if allowed {
+            self.0 |= right;
+        } else {
+            self.0 &= !right;
+        }
+    }
+}
+
 // Little-endian rank-file mapping
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +66,8 @@ pub struct Board {
     pub white: Bitboard,
     pub black: Bitboard,
 
-    pub king_position: Option<usize>,
+    pub king_position: OnePerColor<Option<usize>>,
+    pub castling: CastlingRights,
 }
 
 impl Board {
@@ -32,7 +80,8 @@ impl Board {
         kings: Bitboard(0),
         white: Bitboard(0),
         black: Bitboard(0),
-        king_position: None,
+        king_position: OnePerColor::new(None, None),
+        castling: CastlingRights(0),
     };
     pub fn get_color(self, square: Bitboard) -> Option<Color> {
         if !(square & self.white).is_empty() {
@@ -100,7 +149,12 @@ impl Board {
                     self.queens.clear_bit(mov.to);
                 }
                 Kind::King => {
+                    // How would you even capture the king?
                     self.kings.clear_bit(mov.to);
+                    match piece.color {
+                        Color::White => self.king_position.white = None,
+                        Color::Black => self.king_position.black = None,
+                    }
                 }
             }
         }
@@ -130,6 +184,11 @@ impl Board {
             }
             Kind::King => {
                 self.kings.move_bit(mov.from, mov.to);
+                match piece.color {
+                    Color::White => self.king_position.white = Some(mov.to.idx()),
+                    Color::Black => self.king_position.black = Some(mov.to.idx()),
+                }
+                // self.castling &= !(1 << mov.to.idx());
             }
         }
         color_mask.move_bit(mov.from, mov.to);
@@ -190,7 +249,10 @@ impl Board {
             }
             Kind::King => {
                 self.kings.set_bit(square);
-                self.king_position = Some(square.idx());
+                match piece.color {
+                    Color::White => self.king_position.white = Some(square.idx()),
+                    Color::Black => self.king_position.black = Some(square.idx()),
+                }
                 #[cfg(debug_assertions)]
                 {
                     assert!(

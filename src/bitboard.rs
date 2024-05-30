@@ -1,6 +1,6 @@
 use crate::printer;
 use std::{
-    fmt::Write,
+    fmt::{Formatter, LowerHex, Result, Write},
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr},
 };
 
@@ -27,8 +27,8 @@ pub fn generate_pawn_lookup() -> [[Bitboard; 64]; 2] {
             let square = Bitboard(1 << i);
             // 0 is white, 1 is black
             lookup[j as usize][i as usize] = match j {
-                0 => square.north_east() | square.north_west(),
-                1 => square.south_east() | square.south_west(),
+                0 => square.south_east() | square.south_west(),
+                1 => square.north_east() | square.north_west(),
                 _ => panic!("Invalid color"),
             };
             i += 1;
@@ -307,5 +307,13 @@ impl BitXor for Bitboard {
 
     fn bitxor(self, rhs: Self) -> Self {
         Self(self.0 ^ rhs.0)
+    }
+}
+
+impl LowerHex for Bitboard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let val = self.0;
+
+        LowerHex::fmt(&val, f)
     }
 }

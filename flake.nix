@@ -138,6 +138,10 @@
             pkgs.bacon
             (pkgs.python3.withPackages (p: [ p.chess ]))
           ];
+          shellHook = ''
+            echo "Welcome to the development shell for ${my-crate.name}!";
+            export PATH="$PATH:./helpers";
+          '';
         };
       });
 }
