@@ -1,7 +1,7 @@
 use crate::printer;
 use std::{
     fmt::Write,
-    ops::{BitAnd, Shl, Shr},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,30 +105,12 @@ pub trait DirectionalShift:
     }
 }
 
-impl DirectionalShift for Bitboard {
-    const NOT_FILE_A: Self = Bitboard(0xfe_fe_fe_fe_fe_fe_fe_fe);
-    const NOT_FILE_H: Self = Bitboard(0x7f_7f_7f_7f_7f_7f_7f_7f);
-    const NOT_FILE_AB: Self = Bitboard(0xfc_fc_fc_fc_fc_fc_fc_fc);
-    const NOT_FILE_GH: Self = Bitboard(0x3f_3f_3f_3f_3f_3f_3f_3f);
-}
-
-impl DirectionalShift for u64 {
-    const NOT_FILE_A: Self = 0xfe_fe_fe_fe_fe_fe_fe_fe;
-    const NOT_FILE_H: Self = 0x7f_7f_7f_7f_7f_7f_7f_7f;
-    const NOT_FILE_AB: Self = 0xfc_fc_fc_fc_fc_fc_fc_fc;
-    const NOT_FILE_GH: Self = 0x3f_3f_3f_3f_3f_3f_3f_3f;
-}
-
 impl Bitboard {
     pub const MAX: Self = Self(0xFF_FF_FF_FF_FF_FF_FF_FF);
     pub const fn from_square(file: u8, rank: u8) -> Self {
         Self(1 << (rank * 8 + file))
     }
-    // const fn from_square(square: [u8; 2]) -> Bitboard {
-    //     Bitboard(1 << (square[1] * 8 + square[0]))
-    // }
 
-    // A-H
     const FILES: [Self; 8] = [
         Self(0x01_01_01_01_01_01_01_01),
         Self(0x02_02_02_02_02_02_02_02),
@@ -192,6 +174,13 @@ impl Bitboard {
     }
 }
 
+impl DirectionalShift for Bitboard {
+    const NOT_FILE_A: Self = Self::NOT_FILE_A;
+    const NOT_FILE_H: Self = Self::NOT_FILE_H;
+    const NOT_FILE_AB: Self = Self::NOT_FILE_AB;
+    const NOT_FILE_GH: Self = Self::NOT_FILE_GH;
+}
+
 impl std::fmt::Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let display: Vec<String> = printer::display_bitboard(*self);
@@ -208,7 +197,7 @@ impl std::fmt::Display for Bitboard {
     }
 }
 
-impl std::ops::BitOr for Bitboard {
+impl BitOr for Bitboard {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self {
@@ -216,25 +205,25 @@ impl std::ops::BitOr for Bitboard {
     }
 }
 
-impl std::ops::BitOrAssign for Bitboard {
+impl BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
 
-impl std::ops::BitAndAssign for Bitboard {
+impl BitAndAssign for Bitboard {
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
     }
 }
 
-impl std::ops::BitXorAssign for Bitboard {
+impl BitXorAssign for Bitboard {
     fn bitxor_assign(&mut self, rhs: Self) {
         self.0 ^= rhs.0;
     }
 }
 
-impl std::ops::BitAnd for Bitboard {
+impl BitAnd for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self {
@@ -242,7 +231,7 @@ impl std::ops::BitAnd for Bitboard {
     }
 }
 
-impl std::ops::Shl<u64> for Bitboard {
+impl Shl<u64> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: u64) -> Self {
@@ -250,7 +239,7 @@ impl std::ops::Shl<u64> for Bitboard {
     }
 }
 
-impl std::ops::Shr<u64> for Bitboard {
+impl Shr<u64> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: u64) -> Self {
@@ -258,7 +247,7 @@ impl std::ops::Shr<u64> for Bitboard {
     }
 }
 
-impl std::ops::Not for Bitboard {
+impl Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self {
@@ -266,7 +255,7 @@ impl std::ops::Not for Bitboard {
     }
 }
 
-impl std::ops::BitXor<usize> for Bitboard {
+impl BitXor<usize> for Bitboard {
     type Output = Self;
 
     fn bitxor(self, rhs: usize) -> Self {
@@ -274,7 +263,7 @@ impl std::ops::BitXor<usize> for Bitboard {
     }
 }
 
-impl std::ops::BitXor for Bitboard {
+impl BitXor for Bitboard {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self {
