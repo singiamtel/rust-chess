@@ -421,7 +421,7 @@ impl Game {
             & opposite_color_mask)
             != Bitboard(0)
         {
-            println!("Pawn check!");
+            // println!("Pawn check!");
             // println!("{:#016x}", self.pawn_attacks_lookup.get(color)[king_position]);
             // println!("{:#016x}", self.board.pawns);
             // println!("{:#016x}", opposite_color_mask);
@@ -433,10 +433,10 @@ impl Game {
         if (self.knight_attacks_lookup[king_position] & (self.board.knights & color_mask))
             != Bitboard(0)
         {
-            println!("Knight check!");
-            println!("{:#016x}", self.knight_attacks_lookup[king_position]);
-            println!("{:#016x}", self.board.knights);
-            println!("{:#016x}", opposite_color_mask);
+            // println!("Knight check!");
+            // println!("{:#016x}", self.knight_attacks_lookup[king_position]);
+            // println!("{:#016x}", self.board.knights);
+            // println!("{:#016x}", opposite_color_mask);
             return true;
         }
         // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
@@ -452,10 +452,10 @@ impl Game {
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Rook => {
-                        println!("Queen or Rook check!");
-                        println!("{:#016x}", opposite_color_mask);
-                        println!("{:#016x}", self.board.kings & color_mask);
-                        println!("{}", piece);
+                        // println!("Queen or Rook check!");
+                        // println!("{:#016x}", opposite_color_mask);
+                        // println!("{:#016x}", self.board.kings & color_mask);
+                        // println!("{}", piece);
                         return true;
                     }
                     _ => {}
@@ -472,7 +472,7 @@ impl Game {
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Bishop => {
-                        println!("Queen or Bishop check!");
+                        // println!("Queen or Bishop check!");
                         return true;
                     }
                     _ => {}
