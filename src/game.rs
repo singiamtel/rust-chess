@@ -1,7 +1,9 @@
 use std::error::Error;
 
 use crate::{
-    bitboard::{generate_pawn_lookup, Bitboard, Direction, DirectionalShift},
+    bitboard::{
+        generate_knight_lookup, generate_pawn_lookup, Bitboard, Direction, DirectionalShift,
+    },
     board::Board,
     piece::{Color, Kind, Piece},
     r#move::{algebraic_to_bitboard, BitboardError, Move},
@@ -19,6 +21,7 @@ pub struct Game {
     pub halfmove_clock: u8,
     pub fullmove_number: u16,
     pub pawn_attacks_lookup: Option<[[Bitboard; 64]; 2]>,
+    pub knight_attacks_lookup: Option<[Bitboard; 64]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +50,7 @@ impl Game {
         fullmove_number: 1,
         turn: Color::White,
         pawn_attacks_lookup: None,
+        knight_attacks_lookup: None,
     };
 
     pub const STARTING_FEN: &'static str =
@@ -66,86 +70,38 @@ impl Game {
 
         for c in pieces.chars() {
             match c {
-                'P' => {
+                'P' | 'N' | 'B' | 'R' | 'Q' | 'K' => {
                     game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::Pawn),
+                        Piece::new(
+                            Color::White,
+                            match c {
+                                'P' => Kind::Pawn,
+                                'N' => Kind::Knight,
+                                'B' => Kind::Bishop,
+                                'R' => Kind::Rook,
+                                'Q' => Kind::Queen,
+                                'K' => Kind::King,
+                                _ => unreachable!(),
+                            },
+                        ),
                         Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
-                'N' => {
+                'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
                     game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::Knight),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'B' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::Bishop),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'R' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::Rook),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'Q' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::Queen),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'K' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::White, Kind::King),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'p' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::Pawn),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'n' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::Knight),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'b' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::Bishop),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'r' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::Rook),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'q' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::Queen),
-                        Bitboard::from_square(file, rank),
-                    );
-                    file += 1;
-                }
-                'k' => {
-                    game.board.spawn_piece(
-                        Piece::new(Color::Black, Kind::King),
+                        Piece::new(
+                            Color::Black,
+                            match c {
+                                'p' => Kind::Pawn,
+                                'n' => Kind::Knight,
+                                'b' => Kind::Bishop,
+                                'r' => Kind::Rook,
+                                'q' => Kind::Queen,
+                                'k' => Kind::King,
+                                _ => unreachable!(),
+                            },
+                        ),
                         Bitboard::from_square(file, rank),
                     );
                     file += 1;
@@ -161,6 +117,7 @@ impl Game {
             }
         }
         game.pawn_attacks_lookup = Some(generate_pawn_lookup());
+        game.knight_attacks_lookup = Some(generate_knight_lookup());
         Ok(game)
     }
 

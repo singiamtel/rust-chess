@@ -18,6 +18,8 @@ pub struct Board {
     pub kings: Bitboard,
     pub white: Bitboard,
     pub black: Bitboard,
+
+    pub king_position: Option<usize>,
 }
 
 impl Board {
@@ -30,6 +32,7 @@ impl Board {
         kings: Bitboard(0),
         white: Bitboard(0),
         black: Bitboard(0),
+        king_position: None,
     };
     pub fn get_color(self, square: Bitboard) -> Option<Color> {
         if !(square & self.white).is_empty() {
@@ -163,32 +166,41 @@ impl Board {
     }
 
     pub fn spawn_piece(&mut self, piece: Piece, square: Bitboard) {
+        let color_mask = match piece.color {
+            Color::White => &mut self.white,
+            Color::Black => &mut self.black,
+        };
+
+        color_mask.set_bit(square);
         match piece.kind {
             Kind::Pawn => {
-                self.pawns |= square;
+                self.pawns.set_bit(square);
             }
             Kind::Knight => {
-                self.knights |= square;
+                self.knights.set_bit(square);
             }
             Kind::Bishop => {
-                self.bishops |= square;
+                self.bishops.set_bit(square);
             }
             Kind::Rook => {
-                self.rooks |= square;
+                self.rooks.set_bit(square);
             }
             Kind::Queen => {
-                self.queens |= square;
+                self.queens.set_bit(square);
             }
             Kind::King => {
-                self.kings |= square;
-            }
-        }
-        match piece.color {
-            Color::White => {
-                self.white |= square;
-            }
-            Color::Black => {
-                self.black |= square;
+                self.kings.set_bit(square);
+                self.king_position = Some(square.idx());
+                #[cfg(debug_assertions)]
+                {
+                    assert!(
+                        (self.kings & *color_mask).count() == 1,
+                        "{} {} {}",
+                        self.kings,
+                        *color_mask,
+                        (self.kings & *color_mask).count()
+                    );
+                }
             }
         }
     }

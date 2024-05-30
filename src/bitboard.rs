@@ -39,6 +39,26 @@ pub fn generate_pawn_lookup() -> [[Bitboard; 64]; 2] {
     lookup
 }
 
+pub fn generate_knight_lookup() -> [Bitboard; 64] {
+    let mut lookup: [Bitboard; 64] = [Bitboard(0); 64];
+    let mut i: u8 = 0;
+    while i < 64 {
+        let square = Bitboard(1 << i);
+        // all 8 knight moves
+        lookup[i as usize] = square.no_no_ea()
+            | square.no_ea_ea()
+            | square.so_ea_ea()
+            | square.so_so_ea()
+            | square.no_no_we()
+            | square.no_we_we()
+            | square.so_we_we()
+            | square.so_so_we();
+        i += 1;
+    }
+
+    lookup
+}
+
 pub trait DirectionalShift:
     Sized + Shl<u64, Output = Self> + Shr<u64, Output = Self> + BitAnd<Self, Output = Self>
 {
@@ -152,6 +172,7 @@ impl Bitboard {
         (self & Self::PAWN_INITIAL & color_mask) == self
     }
 
+    #[inline(always)]
     pub fn move_bit(&mut self, from: Self, to: Self) {
         #[cfg(debug_assertions)]
         {
@@ -161,16 +182,34 @@ impl Bitboard {
         *self |= to;
     }
 
+    #[inline(always)]
     pub fn clear_bit(&mut self, from: Self) {
         self.0 &= !from.0;
     }
 
+    #[inline(always)]
+    pub fn set_bit(&mut self, bit: Self) {
+        *self |= bit;
+    }
+
+    #[inline(always)]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
+    #[inline(always)]
     pub fn intersects(self, other: Self) -> bool {
         (self & other) != Self(0)
+    }
+
+    #[inline(always)]
+    pub fn idx(&self) -> usize {
+        self.0.trailing_zeros() as usize
+    }
+
+    #[inline(always)]
+    pub fn count(&self) -> usize {
+        self.0.count_ones() as usize
     }
 }
 
