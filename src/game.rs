@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::{
-    bitboard::{Bitboard, Direction},
+    bitboard::{generate_pawn_lookup, Bitboard, Direction, DirectionalShift},
     board::Board,
     piece::{Color, Kind, Piece},
     r#move::{algebraic_to_bitboard, BitboardError, Move},
@@ -18,6 +18,7 @@ pub struct Game {
 
     pub halfmove_clock: u8,
     pub fullmove_number: u16,
+    pub pawn_attacks_lookup: Option<[[Bitboard; 64]; 2]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +46,7 @@ impl Game {
         halfmove_clock: 0,
         fullmove_number: 1,
         turn: Color::White,
+        pawn_attacks_lookup: None,
     };
 
     pub const STARTING_FEN: &'static str =
@@ -67,84 +69,84 @@ impl Game {
                 'P' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::Pawn),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'N' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::Knight),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'B' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::Bishop),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'R' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::Rook),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'Q' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::Queen),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'K' => {
                     game.board.spawn_piece(
                         Piece::new(Color::White, Kind::King),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'p' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::Pawn),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'n' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::Knight),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'b' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::Bishop),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'r' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::Rook),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'q' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::Queen),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
                 'k' => {
                     game.board.spawn_piece(
                         Piece::new(Color::Black, Kind::King),
-                        Bitboard::FROM_SQUARE([file, rank]),
+                        Bitboard::from_square(file, rank),
                     );
                     file += 1;
                 }
@@ -158,6 +160,7 @@ impl Game {
                 }
             }
         }
+        game.pawn_attacks_lookup = Some(generate_pawn_lookup());
         Ok(game)
     }
 
@@ -358,7 +361,21 @@ impl Game {
         moves
     }
 
-    pub fn gen_moves(&self) -> Vec<Move> {
+    pub fn is_check(&mut self, color: Color) -> bool {
+        let king = self.board.kings & self.board.get_color_mask(color);
+        let mut moves: Vec<Move> = vec![];
+        self.turn = !self.turn;
+        moves.append(&mut self.gen_moves());
+        // let ret = moves.clone().into_iter().any(|m| m.to == king);
+        let ret = false; // TODO: Implement
+        if ret {
+            println!("Check! by: {:?}", moves.into_iter().find(|m| m.to == king));
+        }
+        self.turn = !self.turn;
+        ret
+    }
+
+    pub fn gen_moves(&mut self) -> Vec<Move> {
         let mut moves: Vec<Move> = vec![];
         let occupied = self.board.occupied();
 
@@ -386,7 +403,7 @@ impl Game {
 
     pub fn make_move(&mut self, mov: Move) {
         self.board.move_piece(mov);
-        self.turn = self.turn.opposite();
+        self.turn = !self.turn;
         self.history.push(mov);
         self.fullmove_number += 1;
         self.halfmove_clock += 1;
@@ -396,7 +413,7 @@ impl Game {
         // let mov = game.history.pop().expect("No moves to undo");
         self.history.pop().expect("No moves to undo");
         self.board.unmove_piece(mov);
-        self.turn = self.turn.opposite();
+        self.turn = !self.turn;
         // restore old piece
         if let Some(captured_piece) = mov.capture {
             self.board.spawn_piece(captured_piece, mov.to);

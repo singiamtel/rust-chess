@@ -135,6 +135,7 @@
             # pkgs.ripgrep
             pkgs.stockfish
             pkgs.difftastic
+            pkgs.bacon
             (pkgs.python3.withPackages (p: [ p.chess ]))
           ];
         };

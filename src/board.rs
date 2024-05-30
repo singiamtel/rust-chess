@@ -192,6 +192,13 @@ impl Board {
             }
         }
     }
+
+    pub fn get_color_mask(&self, color: Color) -> Bitboard {
+        match color {
+            Color::White => self.white,
+            Color::Black => self.black,
+        }
+    }
 }
 
 impl Display for Board {
@@ -199,7 +206,7 @@ impl Display for Board {
         let mut board = String::new();
         for rank in (0..8).rev() {
             for file in 0..8 {
-                let square = Bitboard::FROM_SQUARE([file, rank]);
+                let square = Bitboard::from_square(file, rank);
                 let piece = self.get_piece(square);
                 board += &format!("{} ", to_letter(piece));
             }

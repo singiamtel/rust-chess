@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Pawn,
@@ -14,6 +16,16 @@ pub enum Color {
     Black,
 }
 
+impl Not for Color {
+    type Output = Self;
+    fn not(self) -> Self {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub color: Color,
@@ -23,15 +35,6 @@ pub struct Piece {
 impl std::fmt::Display for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} {}", self.color, self.kind)
-    }
-}
-
-impl Color {
-    pub const fn opposite(self) -> Self {
-        match self {
-            Self::White => Self::Black,
-            Self::Black => Self::White,
-        }
     }
 }
 
