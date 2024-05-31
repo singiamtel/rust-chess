@@ -23,7 +23,7 @@ impl Move {
         //         "From and to squares are the same"
         //     );
         //     assert!(
-        //         !(piece.kind != PieceKind::Pawn && promotion.is_some()),
+        //         !(what.kind != PieceKind::Pawn && promotion.is_some()),
         //         "Non-pawn piece cannot promote"
         //     );
         //     assert!(
@@ -54,14 +54,14 @@ impl Move {
             self.with_promotion(Kind::Knight),
         ]
     }
-    // pub const fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
-    //     self.en_passant = Some(en_passant);
-    //     self
-    // }
-    // pub const fn with_castling(mut self, castling: u8) -> Self {
-    //     self.castling = castling;
-    //     self
-    // }
+    pub const fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
+        self.en_passant = Some(en_passant);
+        self
+    }
+    pub const fn with_castling(mut self, castling: u8) -> Self {
+        self.castling = castling;
+        self
+    }
     pub const fn with_capture(mut self, capture: Piece) -> Self {
         self.capture = Some(capture);
         self

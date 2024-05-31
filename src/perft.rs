@@ -1,32 +1,27 @@
 use crate::Game;
 
-fn perft_recursive(game: &mut Game, depth: u8) -> u64 {
+pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let mut nodes = 0;
     let moves = game.gen_moves();
+    let mut all_nodes = 0;
     for m in &moves {
         game.make_move(*m);
-        if !game.is_check(game.turn) {
-            nodes += perft_recursive(game, depth - 1);
+        let nodes = if !game.is_check() {
+            // println!("{m} is not check");
+            perft(game, depth - 1, false)
+        } else {
+            // println!("{m} is check");
+            0
+        };
+        game.unmake_move(*m);
+        if is_root {
+            println!("{m} {nodes}");
         }
-        game.unmake_move(*m);
+        all_nodes += nodes;
     }
-    nodes
-}
-
-pub fn perft(game: &mut Game, depth: u8) -> u64 {
-    let mut nodes = 0;
-    let moves = game.gen_moves();
-    for m in &moves {
-        game.make_move(*m);
-        let new_nodes = perft_recursive(game, depth - 1);
-        println!("{m} {new_nodes}");
-        nodes += new_nodes;
-        game.unmake_move(*m);
-    }
-    nodes
+    all_nodes
 }
 
 #[cfg(test)]
@@ -36,12 +31,12 @@ mod tests {
     use crate::piece::Piece;
     use crate::r#move::Move;
     use std::mem;
-    // https://www.chessprogramming.org/Perft_Results#Initial_Position
     pub fn sizes() {
         println!("Size of Piece: {}", mem::size_of::<Piece>());
         println!("Size of Move: {}", mem::size_of::<Move>());
     }
 
+    // https://www.chessprogramming.org/Perft_Results#Initial_Position
     const PERFT_RESULTS: [u64; 9] = [
         20,
         400,
@@ -59,7 +54,7 @@ mod tests {
         let mut game = Game::new(Game::STARTING_FEN).unwrap();
         // TODO: Test all the way down!
         for depth in 1..=4 {
-            let n_moves = perft(&mut game, depth);
+            let n_moves = perft(&mut game, depth, true);
             assert_eq!(
                 n_moves,
                 PERFT_RESULTS[depth as usize - 1],

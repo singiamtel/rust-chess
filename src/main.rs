@@ -15,8 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let fen = env::args()
         .nth(2)
         .unwrap_or_else(|| Game::STARTING_FEN.to_string());
-    let moves = env::args().nth(3).unwrap_or_default();
-
+    let moves: String = env::args().nth(3).unwrap_or_default();
     let mut game = Game::new(&fen)?;
 
     if !moves.is_empty() {
@@ -26,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let n_moves = perft(&mut game, perft_depth);
+    let n_moves = perft(&mut game, perft_depth, true);
     println!("\n{n_moves}");
     Ok(())
 }

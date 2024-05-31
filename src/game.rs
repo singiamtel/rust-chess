@@ -15,7 +15,11 @@ pub struct History(Vec<Move>);
 
 impl std::fmt::Display for History {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:#?}", self.0)
+        // print all moves in algebraic notation
+        for r#move in &self.0 {
+            let _ = write!(f, "{move} ");
+        }
+        Ok(())
     }
 }
 
@@ -371,8 +375,8 @@ impl Game {
         }
     }
 
-    pub fn is_check(&mut self, color: Color) -> bool {
-        let king_position: usize = match color {
+    fn king_position(&self, color: Color) -> usize {
+        match color {
             Color::White => self
                 .board
                 .king_position
@@ -383,11 +387,16 @@ impl Game {
                 .king_position
                 .black
                 .expect("King position not set"),
-        };
+        }
+    }
+
+    pub fn is_check(&mut self) -> bool {
+        let color = !self.turn; // We want to check if the last move was a self-check
+        let king_position = self.king_position(color);
         let (color_mask, opposite_color_mask) = if color == Color::White {
-            (self.board.black, self.board.white)
-        } else {
             (self.board.white, self.board.black)
+        } else {
+            (self.board.black, self.board.white)
         };
         if (self.pawn_attacks_lookup.get(color)[king_position]
             & self.board.pawns
@@ -403,15 +412,17 @@ impl Game {
             // & opposite_color_mask);
             return true;
         }
-        if (self.knight_attacks_lookup[king_position] & (self.board.knights & color_mask))
+        // println!("History: {:}", self.history);
+        // println!("Side checked: {}", color);
+        // println!("Kings: {:#016x}", self.board.kings);
+        // println!("King position: {}", Bitboard(1 << king_position).to_algebraic().unwrap());
+        // println!("Knight attacks: {:#016x}", self.knight_attacks_lookup[king_position]);
+        // println!("Knights: {:#016x}", self.board.knights & opposite_color_mask);
+        if (self.knight_attacks_lookup[king_position] & (self.board.knights & opposite_color_mask))
             != Bitboard(0)
         {
-            println!("Knight check!");
-            // print all previous moves
-            println!("{:#016x}", self.board.kings);
-            println!("{:#016x}", 1 << king_position);
-            println!("{:#016x}", self.knight_attacks_lookup[king_position]);
-            println!("{:#016x}", opposite_color_mask);
+            // println!("Knight check!");
+            // // print all previous moves
             return true;
         }
         // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
@@ -423,7 +434,7 @@ impl Game {
             Direction::West,
         ] {
             // self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
-            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, !color);
+            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Rook => {
@@ -443,7 +454,7 @@ impl Game {
             Direction::SouthEast,
             Direction::SouthWest,
         ] {
-            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, !color);
+            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Bishop => {
