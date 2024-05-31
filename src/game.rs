@@ -2,18 +2,37 @@ use std::error::Error;
 
 use crate::{
     bitboard::{
-        generate_knight_lookup, generate_pawn_lookup, Bitboard, Direction, DirectionalShift,
+        display::BitboardDisplay, generate_knight_lookup, generate_pawn_lookup, Bitboard,
+        BitboardError, Direction, DirectionalShift,
     },
     board::{Board, CastlingRights, OnePerColor},
     piece::{Color, Kind, Piece},
-    r#move::{algebraic_to_bitboard, BitboardError, Move},
+    r#move::Move,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct History(Vec<Move>);
+
+impl std::fmt::Display for History {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:#?}", self.0)
+    }
+}
+
+impl History {
+    pub fn push(&mut self, r#move: Move) {
+        self.0.push(r#move);
+    }
+    pub fn pop(&mut self) -> Option<Move> {
+        self.0.pop()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Game {
     pub board: Board,
     pub turn: Color,
-    pub history: Vec<Move>,
+    pub history: History,
 
     pub en_passant: Option<Bitboard>,
 
@@ -144,7 +163,7 @@ impl Game {
         let en_passant = if en_passant_str == "-" {
             None
         } else {
-            Some(algebraic_to_bitboard(en_passant_str)?)
+            Some(Bitboard::from_algebraic(en_passant_str)?)
         };
 
         let _pawn_attacks_lookup = generate_pawn_lookup();
@@ -154,7 +173,7 @@ impl Game {
         Ok(Game {
             board,
             turn,
-            history: vec![],
+            history: History(vec![]),
             en_passant,
             halfmove_clock: 0,  // TODO: implement
             fullmove_number: 1, // TODO: implement
@@ -176,16 +195,7 @@ impl Game {
         } else {
             (self.board.black, self.board.white)
         };
-        let to = match direction {
-            Direction::North => current_square.north(),
-            Direction::South => current_square.south(),
-            Direction::East => current_square.east(),
-            Direction::West => current_square.west(),
-            Direction::NorthEast => current_square.north_east(),
-            Direction::NorthWest => current_square.north_west(),
-            Direction::SouthEast => current_square.south_east(),
-            Direction::SouthWest => current_square.south_west(),
-        };
+        let to = current_square.shift(direction);
 
         if !to.is_empty() && !to.intersects(color_mask) {
             let mut new_move = Move::new(origin_square, to, piece);
@@ -279,16 +289,9 @@ impl Game {
             }
             Kind::Knight => {
                 let mut moves: Vec<Move> = vec![];
-                for to in [
-                    origin_square.no_no_ea(),
-                    origin_square.no_ea_ea(),
-                    origin_square.so_ea_ea(),
-                    origin_square.so_so_ea(),
-                    origin_square.no_no_we(),
-                    origin_square.no_we_we(),
-                    origin_square.so_we_we(),
-                    origin_square.so_so_we(),
-                ] {
+
+                for &knight_move in &Direction::KNIGHT_MOVES {
+                    let to = origin_square.shift(&knight_move);
                     if !to.is_empty() && !to.intersects(current_turn_mask) {
                         let mut new_move = Move::new(origin_square, to, piece);
                         if to.intersects(opposite_color_mask) {
@@ -297,63 +300,42 @@ impl Game {
                         moves.push(new_move);
                     }
                 }
+
                 moves
             }
             Kind::Bishop => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in [
-                    Direction::NorthEast,
-                    Direction::NorthWest,
-                    Direction::SouthEast,
-                    Direction::SouthWest,
-                ] {
-                    self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
+                for direction in &Direction::DIAGONAL_MOVES {
+                    self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
             }
             Kind::Rook => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in [
-                    Direction::North,
-                    Direction::South,
-                    Direction::East,
-                    Direction::West,
-                ] {
-                    self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
+                for direction in &Direction::STRAIGHT_MOVES {
+                    self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
             }
             Kind::Queen => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in &[
-                    Direction::North,
-                    Direction::South,
-                    Direction::East,
-                    Direction::West,
-                    Direction::NorthEast,
-                    Direction::NorthWest,
-                    Direction::SouthEast,
-                    Direction::SouthWest,
-                ] {
+                for direction in &Direction::SLIDING_MOVES {
                     self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
             }
             Kind::King => {
                 let mut moves: Vec<Move> = vec![];
-                [
-                    origin_square.north(),
-                    origin_square.south(),
-                    origin_square.east(),
-                    origin_square.west(),
-                    origin_square.north_east(),
-                    origin_square.north_west(),
-                    origin_square.south_east(),
-                    origin_square.south_west(),
-                ]
-                .iter()
-                .filter(|&to| *to != Bitboard(0) && *to & current_turn_mask == Bitboard(0))
-                .for_each(|&to| moves.push(Move::new(origin_square, to, piece)));
+                for direction in &Direction::SLIDING_MOVES {
+                    let to = origin_square.shift(direction);
+                    if !to.is_empty() && !to.intersects(current_turn_mask) {
+                        let mut new_move = Move::new(origin_square, to, piece);
+                        if to.intersects(opposite_color_mask) {
+                            new_move = new_move.with_capture(self.board.get_piece(to).unwrap());
+                        }
+                        moves.push(new_move);
+                    }
+                }
                 moves
             }
         };
@@ -371,16 +353,7 @@ impl Game {
         } else {
             (self.board.black, self.board.white)
         };
-        let to = match direction {
-            Direction::North => current_square.north(),
-            Direction::South => current_square.south(),
-            Direction::East => current_square.east(),
-            Direction::West => current_square.west(),
-            Direction::NorthEast => current_square.north_east(),
-            Direction::NorthWest => current_square.north_west(),
-            Direction::SouthEast => current_square.south_east(),
-            Direction::SouthWest => current_square.south_west(),
-        };
+        let to = current_square.shift(direction);
 
         if to.is_empty() {
             None
@@ -433,10 +406,12 @@ impl Game {
         if (self.knight_attacks_lookup[king_position] & (self.board.knights & color_mask))
             != Bitboard(0)
         {
-            // println!("Knight check!");
-            // println!("{:#016x}", self.knight_attacks_lookup[king_position]);
-            // println!("{:#016x}", self.board.knights);
-            // println!("{:#016x}", opposite_color_mask);
+            println!("Knight check!");
+            // print all previous moves
+            println!("{:#016x}", self.board.kings);
+            println!("{:#016x}", 1 << king_position);
+            println!("{:#016x}", self.knight_attacks_lookup[king_position]);
+            println!("{:#016x}", opposite_color_mask);
             return true;
         }
         // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
@@ -530,8 +505,8 @@ impl Game {
     }
 
     pub fn parse_move(&self, r#move: &str) -> Result<Move, BitboardError> {
-        let from = algebraic_to_bitboard(&r#move[0..2])?;
-        let to = algebraic_to_bitboard(&r#move[2..4])?;
+        let from = Bitboard::from_algebraic(&r#move[0..2])?;
+        let to = Bitboard::from_algebraic(&r#move[2..4])?;
         let what = self
             .board
             .get_piece(from)

@@ -26,7 +26,7 @@ impl Not for Color {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub color: Color,
     pub kind: Kind,

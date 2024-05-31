@@ -1,12 +1,12 @@
-use crate::printer;
 use std::{
-    fmt::{Formatter, LowerHex, Result, Write},
+    fmt::{Display, Formatter, LowerHex},
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, Shr},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     North,
     South,
@@ -16,6 +16,55 @@ pub enum Direction {
     NorthWest,
     SouthEast,
     SouthWest,
+    NoNoEa,
+    NoEaEa,
+    SoEaEa,
+    SoSoEa,
+    NoNoWe,
+    NoWeWe,
+    SoWeWe,
+    SoSoWe,
+}
+
+macro_rules! define_moves {
+    ($name:ident, $start:expr, $end:expr) => {
+        pub const $name: [Self; $end - $start] = {
+            let mut moves = [Self::North; $end - $start];
+            let mut i = 0;
+            while i < $end - $start {
+                moves[i] = Self::SLIDING_MOVES[$start + i];
+                i += 1;
+            }
+            moves
+        };
+    };
+}
+
+impl Direction {
+    pub const SLIDING_MOVES: [Self; 8] = [
+        Self::North,
+        Self::South,
+        Self::East,
+        Self::West,
+        Self::NorthEast,
+        Self::NorthWest,
+        Self::SouthEast,
+        Self::SouthWest,
+    ];
+
+    define_moves!(STRAIGHT_MOVES, 0, 4);
+    define_moves!(DIAGONAL_MOVES, 4, 8);
+
+    pub const KNIGHT_MOVES: [Self; 8] = [
+        Self::NoNoEa,
+        Self::NoEaEa,
+        Self::SoEaEa,
+        Self::SoSoEa,
+        Self::NoNoWe,
+        Self::NoWeWe,
+        Self::SoWeWe,
+        Self::SoSoWe,
+    ];
 }
 
 pub fn generate_pawn_lookup() -> [[Bitboard; 64]; 2] {
@@ -67,61 +116,97 @@ pub trait DirectionalShift:
     const NOT_FILE_AB: Self;
     const NOT_FILE_GH: Self;
 
+    #[inline(always)]
     fn north(self) -> Self {
         self << 8
     }
 
+    #[inline(always)]
     fn south(self) -> Self {
         self >> 8
     }
 
+    #[inline(always)]
     fn east(self) -> Self {
         (self & Self::NOT_FILE_H) << 1
     }
 
+    #[inline(always)]
     fn west(self) -> Self {
         (self & Self::NOT_FILE_A) >> 1
     }
 
+    #[inline(always)]
     fn north_east(self) -> Self {
         (self & Self::NOT_FILE_H) << 9
     }
 
+    #[inline(always)]
     fn north_west(self) -> Self {
         (self & Self::NOT_FILE_A) << 7
     }
 
+    #[inline(always)]
     fn south_east(self) -> Self {
         (self & Self::NOT_FILE_H) >> 7
     }
 
+    #[inline(always)]
     fn south_west(self) -> Self {
         (self & Self::NOT_FILE_A) >> 9
     }
     // Knight moves
+    #[inline(always)]
     fn no_no_ea(self) -> Self {
         (self & Self::NOT_FILE_H) << 17
     }
+    #[inline(always)]
     fn no_ea_ea(self) -> Self {
         (self & Self::NOT_FILE_GH) << 10
     }
+    #[inline(always)]
     fn so_ea_ea(self) -> Self {
         (self & Self::NOT_FILE_GH) >> 6
     }
+    #[inline(always)]
     fn so_so_ea(self) -> Self {
         (self & Self::NOT_FILE_H) >> 15
     }
+    #[inline(always)]
     fn no_no_we(self) -> Self {
         (self & Self::NOT_FILE_A) << 15
     }
+    #[inline(always)]
     fn no_we_we(self) -> Self {
         (self & Self::NOT_FILE_AB) << 6
     }
+    #[inline(always)]
     fn so_we_we(self) -> Self {
         (self & Self::NOT_FILE_AB) >> 10
     }
+    #[inline(always)]
     fn so_so_we(self) -> Self {
         (self & Self::NOT_FILE_A) >> 17
+    }
+    fn shift(self, direction: &Direction) -> Self {
+        match direction {
+            Direction::North => self.north(),
+            Direction::South => self.south(),
+            Direction::East => self.east(),
+            Direction::West => self.west(),
+            Direction::NorthEast => self.north_east(),
+            Direction::NorthWest => self.north_west(),
+            Direction::SouthEast => self.south_east(),
+            Direction::SouthWest => self.south_west(),
+            Direction::NoNoEa => self.no_no_ea(),
+            Direction::NoEaEa => self.no_ea_ea(),
+            Direction::SoEaEa => self.so_ea_ea(),
+            Direction::SoSoEa => self.so_so_ea(),
+            Direction::NoNoWe => self.no_no_we(),
+            Direction::NoWeWe => self.no_we_we(),
+            Direction::SoWeWe => self.so_we_we(),
+            Direction::SoSoWe => self.so_so_we(),
+        }
     }
 }
 
@@ -220,21 +305,30 @@ impl DirectionalShift for Bitboard {
     const NOT_FILE_GH: Self = Self::NOT_FILE_GH;
 }
 
-impl std::fmt::Display for Bitboard {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let display: Vec<String> = printer::display_bitboard(*self);
-        writeln!(f)?;
-        let formatted = display.iter().fold(String::new(), |mut acc, s| {
-            s.chars().fold(&mut acc, |acc, c| {
-                write!(acc, "{c} ").unwrap();
-                acc
-            });
-            writeln!(acc).unwrap();
-            acc
-        });
-        writeln!(f, "{formatted}")
-    }
-}
+// impl std::fmt::Debug for Move {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         let from: String = bitboard_to_algebraic(self.from).unwrap_or_else(|_| "EE".to_string());
+//         let to: String = bitboard_to_algebraic(self.to).unwrap_or_else(|_| "EE".to_string());
+//         let what = self.what;
+//         let mut output = String::new();
+//         let _ = write!(output, "{what} {from} -> {to}");
+//         if let Some(promotion) = self.promotion {
+//             let promotion = Piece::new(what.color, promotion);
+//             let _ = write!(output, " {promotion}");
+//         }
+//         if let Some(capture) = self.capture {
+//             let _ = write!(output, " x {capture}");
+//         }
+//         if let Some(en_passant) = self.en_passant {
+//             let en_passant = bitboard_to_algebraic(en_passant).unwrap_or_else(|_| "EE".to_string());
+//             let _ = write!(output, " e.p. {en_passant}");
+//         }
+//         if self.castling != 0 {
+//             let castling = self.castling;
+//             let _ = write!(output, " castling {castling}");
+//         }
+//         write!(f, "{output}")
+//     }
 
 impl BitOr for Bitboard {
     type Output = Self;
@@ -311,9 +405,36 @@ impl BitXor for Bitboard {
 }
 
 impl LowerHex for Bitboard {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let val = self.0;
 
         LowerHex::fmt(&val, f)
     }
 }
+
+#[derive(Debug)]
+pub enum BitboardError {
+    InvalidSingleSquare(String),
+    NoPieceAtSquare(Bitboard),
+    TryFromIntError(TryFromIntError),
+}
+
+use std::num::TryFromIntError;
+
+impl Display for BitboardError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::InvalidSingleSquare(s) => write!(f, "Invalid single square: {s}"),
+            Self::TryFromIntError(e) => write!(f, "TryFromIntError: {e}"),
+            Self::NoPieceAtSquare(b) => write!(f, "No piece at square: {b}"),
+        }
+    }
+}
+
+impl From<TryFromIntError> for BitboardError {
+    fn from(e: TryFromIntError) -> Self {
+        Self::TryFromIntError(e)
+    }
+}
+
+impl std::error::Error for BitboardError {}
