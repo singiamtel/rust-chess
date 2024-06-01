@@ -54,6 +54,7 @@ impl std::fmt::Display for Kind {
 }
 
 impl Piece {
+    #[must_use]
     pub const fn new(color: Color, kind: Kind, position: Bitboard) -> Self {
         Self {
             color,
@@ -63,6 +64,7 @@ impl Piece {
     }
 }
 
+#[must_use]
 pub fn to_letter(piece: Option<Piece>) -> char {
     let mut c: char = piece.map_or('.', |piece| match piece.kind {
         Kind::Pawn => 'P',

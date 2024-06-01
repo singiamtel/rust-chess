@@ -485,15 +485,14 @@ impl Game {
         }
     }
 
-    pub fn is_check(&mut self) -> bool {
-        let color = !self.turn; // We want to check if the last move was a self-check
-        let king_position = self.king_position(color);
+    pub fn is_attacked(&mut self, square: Bitboard, idx: usize, color: Color) -> bool {
+        // let color = !self.turn; // We want to check if the last move was a self-check
         let (color_mask, opposite_color_mask) = if color == Color::White {
             (self.board.white, self.board.black)
         } else {
             (self.board.black, self.board.white)
         };
-        if (self.pawn_attacks_lookup.get(!color)[king_position] // get the other color lookup
+        if (self.pawn_attacks_lookup.get(!color)[idx] // get the other color lookup
             & self.board.pawns
             & opposite_color_mask)
             != Bitboard(0)
@@ -506,7 +505,7 @@ impl Game {
         // println!("King position: {}", Bitboard(1 << king_position).to_algebraic().unwrap());
         // println!("Knight attacks: {:#016x}", self.knight_attacks_lookup[king_position]);
         // println!("Knights: {:#016x}", self.board.knights & opposite_color_mask);
-        if (self.knight_attacks_lookup[king_position] & (self.board.knights & opposite_color_mask))
+        if (self.knight_attacks_lookup[idx] & (self.board.knights & opposite_color_mask))
             != Bitboard(0)
         {
             // println!("Knight check!");
@@ -522,7 +521,7 @@ impl Game {
             Direction::West,
         ] {
             // self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
-            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, color);
+            let piece = self.slide_until_blocked(square, &direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Rook => {
@@ -554,6 +553,16 @@ impl Game {
             }
         }
         false
+    }
+
+    pub fn is_check(&mut self) -> bool {
+        let king_position = self.king_position(!self.turn);
+        let square = Bitboard(1 << king_position);
+        #[cfg(debug_assertions)]
+        {
+            assert!(square.count() == 1);
+        }
+        self.is_attacked(square, king_position, !self.turn)
     }
 
     pub fn gen_moves(&self) -> Vec<Move> {

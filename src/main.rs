@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let n_moves = perft_parallel(&mut game, perft_depth, true);
+    let n_moves = perft_parallel(&game, perft_depth, true);
     println!("\n{n_moves}");
     Ok(())
 }

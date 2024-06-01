@@ -25,7 +25,7 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     all_nodes
 }
 
-pub fn perft_parallel(game: &mut Game, depth: u8, is_root: bool) -> u64 {
+pub fn perft_parallel(game: &Game, depth: u8, is_root: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -36,13 +36,13 @@ pub fn perft_parallel(game: &mut Game, depth: u8, is_root: bool) -> u64 {
             || game.clone(), // Initialize a clone of the game for each thread
             |game_clone, m| {
                 game_clone.make_move(*m);
-                let nodes = if !game_clone.is_check() {
-                    perft(game_clone, depth - 1, false)
-                } else {
+                let nodes = if game_clone.is_check() {
                     0
+                } else {
+                    perft(game_clone, depth - 1, false)
                 };
                 game_clone.unmake_move(*m);
-                if is_root {
+                if is_root && nodes > 0 {
                     println!("{m} {nodes}");
                 }
                 nodes
