@@ -458,8 +458,8 @@ impl Game {
             // // print all previous moves
             return true;
         }
-        // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
 
+        // TODO: Use magic bitboards and pre-computed lookup tables for sliding pieces
         for direction in [
             Direction::North,
             Direction::South,

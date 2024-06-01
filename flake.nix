@@ -136,11 +136,12 @@
             pkgs.stockfish
             pkgs.difftastic
             pkgs.bacon
+            pkgs.linuxKernel.packages.linux_6_6.perf
             (pkgs.python3.withPackages (p: [ p.chess ]))
           ];
           shellHook = ''
             echo "Welcome to the development shell for ${my-crate.name}!";
-            export PATH="$PATH:./helpers";
+            export PATH="$PATH:./helpers:~/.cargo/bin";
             export RUST_BACKTRACE=1;
           '';
         };

@@ -170,9 +170,15 @@ impl Board {
         }
     }
     pub fn move_piece(&mut self, mov: Move) {
-        let Some(piece) = self.get_piece(mov.from) else {
-            panic!("No piece found at square: {}\n{self}", mov.from);
-        };
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                self.get_piece(mov.from).is_some(),
+                "No piece found at square: {}\n{self}",
+                mov.from
+            );
+        }
+        let piece = mov.what;
         if let Some(en_passant) = mov.en_passant {
             self.en_passant = Some(en_passant);
             // println!(

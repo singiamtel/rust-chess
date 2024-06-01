@@ -1,0 +1,9 @@
+925f0bd66d2a089ce6ebdede7fb690b647297671 
+Benchmark 1: cargo run --release 5
+  Time (mean ± σ):     580.0 ms ± 259.1 ms    [User: 598.6 ms, System: 25.7 ms]
+  Range (min … max):   494.4 ms … 1317.5 ms    10 runs
+
+new changes
+Benchmark 1: cargo run --release 5
+  Time (mean ± σ):     499.2 ms ±   5.0 ms    [User: 487.4 ms, System: 9.2 ms]
+  Range (min … max):   493.1 ms … 512.5 ms    10 runs
