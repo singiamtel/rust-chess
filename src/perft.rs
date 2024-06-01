@@ -1,4 +1,5 @@
 use crate::Game;
+use rayon::prelude::*;
 
 pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     if depth == 0 {
@@ -21,6 +22,33 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
         }
         all_nodes += nodes;
     }
+    all_nodes
+}
+
+pub fn perft_parallel(game: &mut Game, depth: u8, is_root: bool) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
+    let moves = game.gen_moves();
+    let all_nodes: u64 = moves
+        .par_iter()
+        .map_init(
+            || game.clone(), // Initialize a clone of the game for each thread
+            |game_clone, m| {
+                game_clone.make_move(*m);
+                let nodes = if !game_clone.is_check() {
+                    perft(game_clone, depth - 1, false)
+                } else {
+                    0
+                };
+                game_clone.unmake_move(*m);
+                if is_root {
+                    println!("{m} {nodes}");
+                }
+                nodes
+            },
+        )
+        .sum();
     all_nodes
 }
 

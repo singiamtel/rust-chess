@@ -3,7 +3,18 @@ Benchmark 1: cargo run --release 5
   Time (mean ± σ):     580.0 ms ± 259.1 ms    [User: 598.6 ms, System: 25.7 ms]
   Range (min … max):   494.4 ms … 1317.5 ms    10 runs
 
-new changes
+9e412515b950b28b6dd611813407857b14f52dc2
 Benchmark 1: cargo run --release 5
   Time (mean ± σ):     499.2 ms ±   5.0 ms    [User: 487.4 ms, System: 9.2 ms]
   Range (min … max):   493.1 ms … 512.5 ms    10 runs
+
+
+PARALLEL
+Benchmark 1: cargo run --release 6
+  Time (mean ± σ):      1.838 s ±  0.101 s    [User: 16.150 s, System: 0.044 s]
+  Range (min … max):    1.610 s …  1.985 s    10 runs
+
+SINGLE_THREAD
+Benchmark 1: cargo run --release 6
+  Time (mean ± σ):     11.424 s ±  0.131 s    [User: 11.320 s, System: 0.029 s]
+  Range (min … max):   11.220 s … 11.612 s    10 runs

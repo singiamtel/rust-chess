@@ -1,9 +1,10 @@
 #![allow(clippy::missing_errors_doc)]
+#![allow(unused_imports)]
 
 use std::env;
 use std::error::Error;
 
-use rust_chess::perft::perft;
+use rust_chess::perft::{perft, perft_parallel};
 use rust_chess::Game;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -25,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let n_moves = perft(&mut game, perft_depth, true);
+    let n_moves = perft_parallel(&mut game, perft_depth, true);
     println!("\n{n_moves}");
     Ok(())
 }

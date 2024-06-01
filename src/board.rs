@@ -181,11 +181,6 @@ impl Board {
         let piece = mov.what;
         if let Some(en_passant) = mov.en_passant {
             self.en_passant = Some(en_passant);
-            // println!(
-            //     "Running move with en passant: move({}) en passant({})",
-            //     mov,
-            //     en_passant.to_algebraic().unwrap()
-            // );
         } else {
             self.en_passant = None;
         }
@@ -198,11 +193,7 @@ impl Board {
         //     self.clear_piece(Kind::Pawn, piece.color, en_passant);
         // }
         if let Some(capture) = mov.capture {
-            if let Some(en_passant) = mov.en_passant {
-                self.clear_piece(Kind::Pawn, piece.color, en_passant);
-            } else {
-                self.clear_piece(capture.kind, capture.color, mov.to);
-            }
+            self.clear_piece(capture.kind, capture.color, capture.position);
         }
 
         let color_mask = match piece.color {

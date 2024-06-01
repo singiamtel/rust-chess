@@ -141,7 +141,7 @@
           ];
           shellHook = ''
             echo "Welcome to the development shell for ${my-crate.name}!";
-            export PATH="$PATH:./helpers:~/.cargo/bin";
+            export PATH="$PATH:./helpers:$HOME/.cargo/bin";
             export RUST_BACKTRACE=1;
           '';
         };
