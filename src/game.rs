@@ -173,7 +173,8 @@ impl Game {
 
         let castling_rights = splitted_iter.next().unwrap();
 
-        let mut set_castling_right = |right| board.castling.set_castling_right(right, true);
+        let mut set_castling_right =
+            |right: CastlingRights| board.castling.set_castling_right(right, true);
         for c in castling_rights.chars() {
             match c {
                 'K' => set_castling_right(CastlingRights::WHITE_KINGSIDE),
@@ -370,16 +371,70 @@ impl Game {
             // TODO: implement castling
             Kind::King => {
                 let mut moves: Vec<Move> = vec![];
+                let lost_rights = match piece.color {
+                    Color::White => CastlingRights::WHITE_BOTH,
+                    Color::Black => CastlingRights::BLACK_BOTH,
+                };
                 for direction in &Direction::SLIDING_MOVES {
                     let to = origin_square.shift(direction);
                     if !to.is_empty() && !to.intersects(current_turn_mask) {
-                        let mut new_move = Move::new(origin_square, to, piece);
+                        let mut new_move = Move::new(origin_square, to, piece)
+                            .with_castling_rights_loss(lost_rights);
                         if to.intersects(opposite_color_mask) {
                             new_move = new_move.with_capture(self.board.get_piece(to).unwrap());
                         }
                         moves.push(new_move);
                     }
                 }
+                // castling
+                if origin_square.intersects(Bitboard::KING_INITIAL) {
+                    // TODO: Long castle
+                    match piece.color {
+                        Color::White => {
+                            if self
+                                .board
+                                .castling
+                                .get_castling_right(CastlingRights::WHITE_KINGSIDE)
+                            {
+                                let king_destination = origin_square.east().east();
+                                let rook_origin = king_destination.east();
+                                let rook_destination = origin_square.east();
+
+                                // TODO: check if the king is in check during travel
+                                if !rook_destination.intersects(self.board.anything())
+                                    && !king_destination.intersects(self.board.anything())
+                                {
+                                    let mov = Move::new(origin_square, king_destination, piece)
+                                        .with_castling_rights_loss(lost_rights)
+                                        .with_castle_move((rook_origin, rook_destination));
+                                    moves.push(mov);
+                                }
+                            }
+                        }
+                        Color::Black => {
+                            if self
+                                .board
+                                .castling
+                                .get_castling_right(CastlingRights::BLACK_KINGSIDE)
+                            {
+                                let king_destination = origin_square.east().east();
+                                let rook_origin = king_destination.east();
+                                let rook_destination = origin_square.east();
+
+                                // TODO: check if the king is in check during travel
+                                if !rook_destination.intersects(self.board.anything())
+                                    && !king_destination.intersects(self.board.anything())
+                                {
+                                    let mov = Move::new(origin_square, king_destination, piece)
+                                        .with_castling_rights_loss(lost_rights)
+                                        .with_castle_move((rook_origin, rook_destination));
+                                    moves.push(mov);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 moves
             }
         };
@@ -503,7 +558,6 @@ impl Game {
 
     pub fn gen_moves(&self) -> Vec<Move> {
         let mut moves: Vec<Move> = vec![];
-        let occupied = self.board.occupied();
 
         let current_turn_mask = if self.turn == Color::White {
             self.board.white
@@ -512,7 +566,8 @@ impl Game {
         };
         for i in 0..64 {
             let square = Bitboard(1 << i);
-            if occupied & square & current_turn_mask != Bitboard(0) {
+
+            if square.intersects(current_turn_mask) {
                 #[cfg(debug_assertions)]
                 {
                     self.board
@@ -544,6 +599,16 @@ impl Game {
         if let Some(captured_piece) = mov.capture {
             self.board.spawn_piece(captured_piece);
         }
+
+        if let Some(castle_move) = mov.castle_move {
+            // TODO: move it instead
+            self.board
+                .clear_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.0));
+            self.board
+                .spawn_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.1));
+            self.board.castling.toggle_right(mov.castling_rights_change);
+        }
+
         self.fullmove_number -= 1;
         self.halfmove_clock -= 1;
     }

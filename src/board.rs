@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter, LowerHex, Result};
+use std::ops::{BitAnd, BitAndAssign, BitOrAssign, BitXorAssign, Not};
 
 use crate::bitboard::display::BitboardDisplay;
 use crate::{
@@ -24,23 +25,76 @@ impl<T> OnePerColor<T> {
         }
     }
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRights(u8);
 
 impl CastlingRights {
     // Constants for each castling right bit
-    pub const WHITE_KINGSIDE: u8 = 0b1000;
-    pub const WHITE_QUEENSIDE: u8 = 0b0100;
-    pub const BLACK_KINGSIDE: u8 = 0b0010;
-    pub const BLACK_QUEENSIDE: u8 = 0b0001;
+    pub const WHITE_KINGSIDE: Self = CastlingRights(0b1000);
+    pub const WHITE_QUEENSIDE: Self = CastlingRights(0b0100);
+    pub const BLACK_KINGSIDE: Self = CastlingRights(0b0010);
+    pub const BLACK_QUEENSIDE: Self = CastlingRights(0b0001);
+    pub const WHITE_BOTH: Self = CastlingRights(0b1100);
+    pub const BLACK_BOTH: Self = CastlingRights(0b0011);
+    pub const ALL: Self = CastlingRights(0b1111);
+    pub const NONE: Self = CastlingRights(0b0000);
 
     // Set or clear specific castling rights
-    pub fn set_castling_right(&mut self, right: u8, allowed: bool) {
+    pub fn set_castling_right(&mut self, right: Self, allowed: bool) {
         if allowed {
-            self.0 |= right;
+            *self |= right;
         } else {
-            self.0 &= !right;
+            *self &= !right;
         }
+    }
+
+    pub fn toggle_right(&mut self, right: Self) {
+        *self ^= right;
+    }
+
+    pub fn get_castling_right(self, right: Self) -> bool {
+        self & right != Self::NONE
+    }
+}
+
+impl BitAnd<CastlingRights> for CastlingRights {
+    type Output = CastlingRights;
+    fn bitand(self, rhs: Self) -> Self {
+        CastlingRights(self.0 & rhs.0)
+    }
+}
+
+impl BitOrAssign for CastlingRights {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl BitXorAssign for CastlingRights {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
+impl BitAndAssign for CastlingRights {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl Not for CastlingRights {
+    type Output = CastlingRights;
+    fn not(self) -> Self {
+        CastlingRights(!self.0)
+    }
+}
+
+impl LowerHex for CastlingRights {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let val = self.0;
+
+        LowerHex::fmt(&val, f)
     }
 }
 
@@ -86,7 +140,8 @@ impl Board {
             None
         }
     }
-    pub fn occupied(self) -> Bitboard {
+
+    pub fn anything(&self) -> Bitboard {
         self.black | self.white
     }
 
@@ -148,34 +203,34 @@ impl Board {
         }
     }
 
-    pub fn clear_piece(&mut self, piece: Kind, color: Color, square: Bitboard) {
-        let color_mask = match color {
+    pub fn clear_piece(&mut self, piece: Piece) {
+        let color_mask = match piece.color {
             Color::White => &mut self.white,
             Color::Black => &mut self.black,
         };
-        color_mask.clear_bit(square);
-        match piece {
-            Kind::Pawn => self.pawns.clear_bit(square),
-            Kind::Knight => self.knights.clear_bit(square),
-            Kind::Bishop => self.bishops.clear_bit(square),
-            Kind::Rook => self.rooks.clear_bit(square),
-            Kind::Queen => self.queens.clear_bit(square),
+        color_mask.clear_bit(piece.position);
+        match piece.kind {
+            Kind::Pawn => self.pawns.clear_bit(piece.position),
+            Kind::Knight => self.knights.clear_bit(piece.position),
+            Kind::Bishop => self.bishops.clear_bit(piece.position),
+            Kind::Rook => self.rooks.clear_bit(piece.position),
+            Kind::Queen => self.queens.clear_bit(piece.position),
             Kind::King => {
-                self.kings.clear_bit(square);
-                match color {
+                self.kings.clear_bit(piece.position);
+                match piece.color {
                     Color::White => self.king_position.white = None,
                     Color::Black => self.king_position.black = None,
                 }
             }
         }
     }
+
     pub fn move_piece(&mut self, mov: Move) {
         #[cfg(debug_assertions)]
         {
             assert!(
                 self.get_piece(mov.from).is_some(),
-                "No piece found at square: {}\n{self}",
-                mov.from
+                "No piece found at origin square for move {mov}\n{self}",
             );
         }
         let piece = mov.what;
@@ -185,23 +240,26 @@ impl Board {
             self.en_passant = None;
         }
 
+        if let Some(castle_move) = mov.castle_move {
+            // TODO: move it instead
+            self.clear_piece(Piece::new(piece.color, Kind::Rook, castle_move.0));
+            self.spawn_piece(Piece::new(piece.color, Kind::Rook, castle_move.1));
+            self.castling.toggle_right(mov.castling_rights_change);
+        }
+
         // We handle capture first, so we don't face issues when trying to eat a piece of the same
         // type
-
-        // if let Some(en_passant) = mov.en_passant {
-        //     // remove the pawn that would be captured by en passant
-        //     self.clear_piece(Kind::Pawn, piece.color, en_passant);
-        // }
         if let Some(capture) = mov.capture {
-            self.clear_piece(capture.kind, capture.color, capture.position);
+            self.clear_piece(capture);
         }
+
+        // TODO: handle castling
 
         let color_mask = match piece.color {
             Color::White => &mut self.white,
             Color::Black => &mut self.black,
         };
 
-        // TODO: handle castling
         match piece.kind {
             Kind::Pawn => {
                 self.pawns.move_bit(mov.from, mov.to);
@@ -245,16 +303,7 @@ impl Board {
             self.white,
             self.black
         );
-        assert_eq!(
-            self.white & self.occupied(),
-            self.white,
-            "White and occupied are out of sync"
-        );
-        assert_eq!(
-            self.black & self.occupied(),
-            self.black,
-            "Black and occupied are out of sync"
-        );
+        // TODO: check that inter-piece masks dont collide, and always intersect with color_masks
     }
 
     pub fn unmove_piece(&mut self, mov: Move) {

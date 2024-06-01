@@ -259,6 +259,9 @@ impl Bitboard {
     pub const PAWN_PROMOTION_MASK: Self = Bitboard(Self::RANK_8.0 | Self::RANK_1.0);
 
     const PAWN_INITIAL: Self = Self(0x00_FF_00_00_00_00_FF_00);
+    // Some day :(
+    // pub const KING_INITIAL: Self = Self::from_algebraic("e1").unwrap() & Self::from_algebraic("e8").unwrap();
+    pub const KING_INITIAL: Self = Self(0x10_00_00_00_00_00_00_10);
 
     pub fn pawn_initial(self, color_mask: Self) -> bool {
         (self & Self::PAWN_INITIAL & color_mask) == self
@@ -312,31 +315,6 @@ impl DirectionalShift for Bitboard {
     const NOT_FILE_AB: Self = Self::NOT_FILE_AB;
     const NOT_FILE_GH: Self = Self::NOT_FILE_GH;
 }
-
-// impl std::fmt::Debug for Move {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         let from: String = bitboard_to_algebraic(self.from).unwrap_or_else(|_| "EE".to_string());
-//         let to: String = bitboard_to_algebraic(self.to).unwrap_or_else(|_| "EE".to_string());
-//         let what = self.what;
-//         let mut output = String::new();
-//         let _ = write!(output, "{what} {from} -> {to}");
-//         if let Some(promotion) = self.promotion {
-//             let promotion = Piece::new(what.color, promotion);
-//             let _ = write!(output, " {promotion}");
-//         }
-//         if let Some(capture) = self.capture {
-//             let _ = write!(output, " x {capture}");
-//         }
-//         if let Some(en_passant) = self.en_passant {
-//             let en_passant = bitboard_to_algebraic(en_passant).unwrap_or_else(|_| "EE".to_string());
-//             let _ = write!(output, " e.p. {en_passant}");
-//         }
-//         if self.castling != 0 {
-//             let castling = self.castling;
-//             let _ = write!(output, " castling {castling}");
-//         }
-//         write!(f, "{output}")
-//     }
 
 impl BitOr for Bitboard {
     type Output = Self;

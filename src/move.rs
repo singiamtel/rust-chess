@@ -1,5 +1,6 @@
 use crate::{
     bitboard::{display::BitboardDisplay, Bitboard},
+    board::CastlingRights,
     piece::{Kind, Piece},
 };
 
@@ -11,7 +12,8 @@ pub struct Move {
     pub capture: Option<Piece>, // To unmake move
     pub promotion: Option<Kind>,
     pub en_passant: Option<Bitboard>,
-    pub castling: u8, // Keep track of changes to castling rights
+    pub castling_rights_change: CastlingRights, // Keep track of changes to castling rights
+    pub castle_move: Option<(Bitboard, Bitboard)>,
 }
 
 impl Move {
@@ -37,8 +39,9 @@ impl Move {
             what,
             promotion: None,
             en_passant: None,
-            castling: 0,
+            castling_rights_change: CastlingRights::NONE,
             capture: None,
+            castle_move: None,
         }
     }
     const fn with_promotion(mut self, promotion: Kind) -> Self {
@@ -66,8 +69,13 @@ impl Move {
         self
     }
 
-    pub const fn with_castling(mut self, castling: u8) -> Self {
-        self.castling = castling;
+    pub const fn with_castling_rights_loss(mut self, castling: CastlingRights) -> Self {
+        self.castling_rights_change = castling;
+        self
+    }
+
+    pub const fn with_castle_move(mut self, castle_move: (Bitboard, Bitboard)) -> Self {
+        self.castle_move = Some(castle_move);
         self
     }
 
