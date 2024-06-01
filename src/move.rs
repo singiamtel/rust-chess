@@ -54,14 +54,23 @@ impl Move {
             self.with_promotion(Kind::Knight),
         ]
     }
-    pub const fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
+    pub fn with_en_passant(mut self, en_passant: Bitboard) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                self.what.kind == Kind::Pawn,
+                "En passant can only be applied to pawns"
+            );
+        }
         self.en_passant = Some(en_passant);
         self
     }
+
     pub const fn with_castling(mut self, castling: u8) -> Self {
         self.castling = castling;
         self
     }
+
     pub const fn with_capture(mut self, capture: Piece) -> Self {
         self.capture = Some(capture);
         self

@@ -1,7 +1,8 @@
 use std::fmt::{Display, Formatter, Result};
 
+use crate::bitboard::display::BitboardDisplay;
 use crate::{
-    bitboard::Bitboard,
+    bitboard::{Bitboard, DirectionalShift},
     piece::{to_letter, Color, Kind, Piece},
     r#move::Move,
 };
@@ -33,16 +34,6 @@ impl CastlingRights {
     pub const BLACK_KINGSIDE: u8 = 0b0010;
     pub const BLACK_QUEENSIDE: u8 = 0b0001;
 
-    // Create a new CastlingRights with initial value
-    // fn new() -> Self {
-    //     CastlingRights(0b0000)
-    // }
-
-    // // Check if a specific castling right is allowed
-    // fn can_castle(&self, right: u8) -> bool {
-    //     self.0 & right != 0
-    // }
-
     // Set or clear specific castling rights
     pub fn set_castling_right(&mut self, right: u8, allowed: bool) {
         if allowed {
@@ -67,6 +58,8 @@ pub struct Board {
     pub black: Bitboard,
 
     pub king_position: OnePerColor<Option<usize>>,
+    pub en_passant: Option<Bitboard>,
+
     pub castling: CastlingRights,
 }
 
@@ -81,6 +74,7 @@ impl Board {
         white: Bitboard(0),
         black: Bitboard(0),
         king_position: OnePerColor::new(None, None),
+        en_passant: None,
         castling: CastlingRights(0),
     };
     pub fn get_color(self, square: Bitboard) -> Option<Color> {
@@ -101,61 +95,107 @@ impl Board {
             return None;
         };
         if !(square & self.pawns).is_empty() {
-            Some(Piece::new(color, Kind::Pawn))
+            Some(Piece::new(color, Kind::Pawn, square))
         } else if !(square & self.knights).is_empty() {
-            Some(Piece::new(color, Kind::Knight))
+            Some(Piece::new(color, Kind::Knight, square))
         } else if !(square & self.bishops).is_empty() {
-            Some(Piece::new(color, Kind::Bishop))
+            Some(Piece::new(color, Kind::Bishop, square))
         } else if !(square & self.rooks).is_empty() {
-            Some(Piece::new(color, Kind::Rook))
+            Some(Piece::new(color, Kind::Rook, square))
         } else if !(square & self.queens).is_empty() {
-            Some(Piece::new(color, Kind::Queen))
+            Some(Piece::new(color, Kind::Queen, square))
         } else if !(square & self.kings).is_empty() {
-            Some(Piece::new(color, Kind::King))
+            Some(Piece::new(color, Kind::King, square))
         } else {
             None
         }
     }
 
+    pub fn get_en_passant_victim(&self, en_passant_square: Bitboard, color: Color) -> Piece {
+        // the en passant square is the capturable square, but the pawn is in
+        // either the next or previous rank, depending on the turn
+        match color {
+            Color::White => {
+                let pawn_square = en_passant_square.north();
+                let piece = self.get_piece(pawn_square);
+                if let Some(piece) = piece {
+                    piece
+                } else {
+                    panic!(
+                        "No en passant pawn found for {} at {}. En passant square: {}. Board: {}",
+                        color,
+                        pawn_square.to_algebraic().unwrap(),
+                        en_passant_square.to_algebraic().unwrap(),
+                        self
+                    );
+                }
+            }
+            Color::Black => {
+                let pawn_square = en_passant_square.south();
+                let piece = self.get_piece(pawn_square);
+                if let Some(piece) = piece {
+                    piece
+                } else {
+                    panic!(
+                        "No en passant pawn found for {} at {}. En passant square: {}. Board: {}",
+                        color,
+                        pawn_square.to_algebraic().unwrap(),
+                        en_passant_square.to_algebraic().unwrap(),
+                        self
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn clear_piece(&mut self, piece: Kind, color: Color, square: Bitboard) {
+        let color_mask = match color {
+            Color::White => &mut self.white,
+            Color::Black => &mut self.black,
+        };
+        color_mask.clear_bit(square);
+        match piece {
+            Kind::Pawn => self.pawns.clear_bit(square),
+            Kind::Knight => self.knights.clear_bit(square),
+            Kind::Bishop => self.bishops.clear_bit(square),
+            Kind::Rook => self.rooks.clear_bit(square),
+            Kind::Queen => self.queens.clear_bit(square),
+            Kind::King => {
+                self.kings.clear_bit(square);
+                match color {
+                    Color::White => self.king_position.white = None,
+                    Color::Black => self.king_position.black = None,
+                }
+            }
+        }
+    }
     pub fn move_piece(&mut self, mov: Move) {
         let Some(piece) = self.get_piece(mov.from) else {
             panic!("No piece found at square: {}\n{self}", mov.from);
         };
+        if let Some(en_passant) = mov.en_passant {
+            self.en_passant = Some(en_passant);
+            // println!(
+            //     "Running move with en passant: move({}) en passant({})",
+            //     mov,
+            //     en_passant.to_algebraic().unwrap()
+            // );
+        } else {
+            self.en_passant = None;
+        }
 
         // We handle capture first, so we don't face issues when trying to eat a piece of the same
         // type
 
+        // if let Some(en_passant) = mov.en_passant {
+        //     // remove the pawn that would be captured by en passant
+        //     self.clear_piece(Kind::Pawn, piece.color, en_passant);
+        // }
         if let Some(capture) = mov.capture {
-            let capture_color_mask = match capture.color {
-                Color::White => &mut self.white,
-                Color::Black => &mut self.black,
-            };
-
-            capture_color_mask.clear_bit(mov.to);
-            match capture.kind {
-                Kind::Pawn => {
-                    self.pawns.clear_bit(mov.to);
-                }
-                Kind::Knight => {
-                    self.knights.clear_bit(mov.to);
-                }
-                Kind::Bishop => {
-                    self.bishops.clear_bit(mov.to);
-                }
-                Kind::Rook => {
-                    self.rooks.clear_bit(mov.to);
-                }
-                Kind::Queen => {
-                    self.queens.clear_bit(mov.to);
-                }
-                Kind::King => {
-                    // How would you even capture the king?
-                    self.kings.clear_bit(mov.to);
-                    match piece.color {
-                        Color::White => self.king_position.white = None,
-                        Color::Black => self.king_position.black = None,
-                    }
-                }
+            if let Some(en_passant) = mov.en_passant {
+                self.clear_piece(Kind::Pawn, piece.color, en_passant);
+            } else {
+                self.clear_piece(capture.kind, capture.color, mov.to);
             }
         }
 
@@ -224,34 +264,36 @@ impl Board {
         self.move_piece(Move::new(mov.to, mov.from, mov.what));
     }
 
-    pub fn spawn_piece(&mut self, piece: Piece, square: Bitboard) {
+    pub fn spawn_piece(&mut self, piece: Piece) {
         let color_mask = match piece.color {
             Color::White => &mut self.white,
             Color::Black => &mut self.black,
         };
 
-        color_mask.set_bit(square);
+        let position = piece.position;
+
+        color_mask.set_bit(position);
         match piece.kind {
             Kind::Pawn => {
-                self.pawns.set_bit(square);
+                self.pawns.set_bit(position);
             }
             Kind::Knight => {
-                self.knights.set_bit(square);
+                self.knights.set_bit(position);
             }
             Kind::Bishop => {
-                self.bishops.set_bit(square);
+                self.bishops.set_bit(position);
             }
             Kind::Rook => {
-                self.rooks.set_bit(square);
+                self.rooks.set_bit(position);
             }
             Kind::Queen => {
-                self.queens.set_bit(square);
+                self.queens.set_bit(position);
             }
             Kind::King => {
-                self.kings.set_bit(square);
+                self.kings.set_bit(position);
                 match piece.color {
-                    Color::White => self.king_position.white = Some(square.idx()),
-                    Color::Black => self.king_position.black = Some(square.idx()),
+                    Color::White => self.king_position.white = Some(position.idx()),
+                    Color::Black => self.king_position.black = Some(position.idx()),
                 }
                 #[cfg(debug_assertions)]
                 {

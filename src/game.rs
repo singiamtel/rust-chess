@@ -33,13 +33,39 @@ impl History {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MovegenError {
+    InvalidMove(String),
+    BitboardError(BitboardError),
+}
+
+impl From<Move> for MovegenError {
+    fn from(r#move: Move) -> Self {
+        Self::InvalidMove(r#move.to_string())
+    }
+}
+
+impl std::fmt::Display for MovegenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::InvalidMove(r#move) => write!(f, "Invalid move: {}", r#move),
+            Self::BitboardError(err) => write!(f, "Bitboard error: {}", err),
+        }
+    }
+}
+
+impl From<BitboardError> for MovegenError {
+    fn from(err: BitboardError) -> Self {
+        Self::BitboardError(err)
+    }
+}
+
+impl Error for MovegenError {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Game {
     pub board: Board,
     pub turn: Color,
     pub history: History,
-
-    pub en_passant: Option<Bitboard>,
-
     pub halfmove_clock: u8,
     pub fullmove_number: u16,
     pub pawn_attacks_lookup: OnePerColor<[Bitboard; 64]>,
@@ -95,39 +121,35 @@ impl Game {
         for c in pieces.chars() {
             match c {
                 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' => {
-                    board.spawn_piece(
-                        Piece::new(
-                            Color::White,
-                            match c {
-                                'P' => Kind::Pawn,
-                                'N' => Kind::Knight,
-                                'B' => Kind::Bishop,
-                                'R' => Kind::Rook,
-                                'Q' => Kind::Queen,
-                                'K' => Kind::King,
-                                _ => unreachable!(),
-                            },
-                        ),
+                    board.spawn_piece(Piece::new(
+                        Color::White,
+                        match c {
+                            'P' => Kind::Pawn,
+                            'N' => Kind::Knight,
+                            'B' => Kind::Bishop,
+                            'R' => Kind::Rook,
+                            'Q' => Kind::Queen,
+                            'K' => Kind::King,
+                            _ => unreachable!(),
+                        },
                         Bitboard::from_square(file, rank),
-                    );
+                    ));
                     file += 1;
                 }
                 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                    board.spawn_piece(
-                        Piece::new(
-                            Color::Black,
-                            match c {
-                                'p' => Kind::Pawn,
-                                'n' => Kind::Knight,
-                                'b' => Kind::Bishop,
-                                'r' => Kind::Rook,
-                                'q' => Kind::Queen,
-                                'k' => Kind::King,
-                                _ => unreachable!(),
-                            },
-                        ),
+                    board.spawn_piece(Piece::new(
+                        Color::Black,
+                        match c {
+                            'p' => Kind::Pawn,
+                            'n' => Kind::Knight,
+                            'b' => Kind::Bishop,
+                            'r' => Kind::Rook,
+                            'q' => Kind::Queen,
+                            'k' => Kind::King,
+                            _ => unreachable!(),
+                        },
                         Bitboard::from_square(file, rank),
-                    );
+                    ));
                     file += 1;
                 }
                 '1'..='8' => file += c as u8 - b'0',
@@ -158,13 +180,14 @@ impl Game {
                 'Q' => set_castling_right(CastlingRights::WHITE_QUEENSIDE),
                 'k' => set_castling_right(CastlingRights::BLACK_KINGSIDE),
                 'q' => set_castling_right(CastlingRights::BLACK_QUEENSIDE),
+                '-' => (),
                 _ => panic!("Invalid FEN string: {fen}"),
             }
         }
 
         let en_passant_str = splitted_iter.next().unwrap();
 
-        let en_passant = if en_passant_str == "-" {
+        board.en_passant = if en_passant_str == "-" {
             None
         } else {
             Some(Bitboard::from_algebraic(en_passant_str)?)
@@ -178,7 +201,6 @@ impl Game {
             board,
             turn,
             history: History(vec![]),
-            en_passant,
             halfmove_clock: 0,  // TODO: implement
             fullmove_number: 1, // TODO: implement
             pawn_attacks_lookup,
@@ -254,41 +276,58 @@ impl Game {
                     }
 
                     if origin_square.pawn_initial(current_turn_mask) {
-                        let to = if self.turn == Color::White {
+                        let new_to = if self.turn == Color::White {
                             origin_square.north().north()
                         } else {
                             origin_square.south().south()
                         };
 
-                        if to != Bitboard(0) && to & colors_mask == Bitboard(0) {
-                            moves.push(Move::new(origin_square, to, piece));
+                        if new_to != Bitboard(0) && (new_to & colors_mask) == Bitboard(0) {
+                            let mov = Move::new(origin_square, new_to, piece).with_en_passant(to);
+                            // println!("Move vulnerable to en passant: {} {}", mov, to.to_algebraic().unwrap());
+                            moves.push(mov);
                         }
                     }
                 }
                 // captures
-                for to in [
-                    if self.turn == Color::White && !origin_square.intersects(Bitboard::FILE_H) {
-                        origin_square.north_east()
-                    } else {
-                        origin_square.south_east()
-                    },
-                    if self.turn == Color::White && !origin_square.intersects(Bitboard::FILE_A) {
-                        origin_square.north_west()
-                    } else {
-                        origin_square.south_west()
-                    },
-                ] {
-                    if !to.is_empty() && to.intersects(opposite_color_mask) {
+                // println!(
+                //     "Generating pawn captures for {} at {}",
+                //     piece,
+                //     origin_square.to_algebraic().unwrap()
+                // );
+                // if let Some(en_passant_square) = self.board.en_passant {
+                //     println!(
+                //         "Current en passant: {}",
+                //         en_passant_square.to_algebraic().unwrap()
+                //     );
+                // }
+                for to in Direction::pawn_captures(self.turn) {
+                    let to = origin_square.shift(&to);
+                    if to.is_empty() {
+                        continue;
+                    }
+
+                    // Regular capture
+                    if to.intersects(opposite_color_mask) {
                         let new_move = Move::new(origin_square, to, piece)
                             .with_capture(self.board.get_piece(to).unwrap());
-                        if to.intersects(Bitboard::RANK_1 | Bitboard::RANK_8) {
+                        if to.intersects(Bitboard::PAWN_PROMOTION_MASK) {
                             moves.append(&mut new_move.with_promotions());
                         } else {
                             moves.push(new_move);
                         }
+                    } else if let Some(en_passant_square) = self.board.en_passant {
+                        if to == en_passant_square {
+                            let victim_pawn = self
+                                .board
+                                .get_en_passant_victim(en_passant_square, !self.turn);
+
+                            let new_move =
+                                Move::new(origin_square, to, piece).with_capture(victim_pawn);
+                            moves.push(new_move);
+                        }
                     }
                 }
-                // TODO: en passant
                 moves
             }
             Kind::Knight => {
@@ -328,6 +367,7 @@ impl Game {
                 }
                 moves
             }
+            // TODO: implement castling
             Kind::King => {
                 let mut moves: Vec<Move> = vec![];
                 for direction in &Direction::SLIDING_MOVES {
@@ -468,7 +508,7 @@ impl Game {
         false
     }
 
-    pub fn gen_moves(&mut self) -> Vec<Move> {
+    pub fn gen_moves(&self) -> Vec<Move> {
         let mut moves: Vec<Move> = vec![];
         let occupied = self.board.occupied();
 
@@ -509,19 +549,22 @@ impl Game {
         self.turn = !self.turn;
         // restore old piece
         if let Some(captured_piece) = mov.capture {
-            self.board.spawn_piece(captured_piece, mov.to);
+            self.board.spawn_piece(captured_piece);
         }
         self.fullmove_number -= 1;
         self.halfmove_clock -= 1;
     }
 
-    pub fn parse_move(&self, r#move: &str) -> Result<Move, BitboardError> {
+    pub fn parse_move(&self, r#move: &str) -> Result<Move, MovegenError> {
+        // println!("Parsing move: {}", r#move);
         let from = Bitboard::from_algebraic(&r#move[0..2])?;
         let to = Bitboard::from_algebraic(&r#move[2..4])?;
-        let what = self
-            .board
-            .get_piece(from)
-            .ok_or(BitboardError::NoPieceAtSquare(from))?;
-        Ok(Move::new(from, to, what))
+        let legal_moves = self.gen_moves();
+        for legal_move in legal_moves {
+            if legal_move.from == from && legal_move.to == to {
+                return Ok(legal_move);
+            }
+        }
+        Err(MovegenError::InvalidMove(r#move.to_string()))
     }
 }

@@ -65,6 +65,12 @@ impl Direction {
         Self::SoWeWe,
         Self::SoSoWe,
     ];
+    pub const fn pawn_captures(color: Color) -> [Self; 2] {
+        match color {
+            Color::White => [Self::NorthEast, Self::NorthWest],
+            Color::Black => [Self::SouthEast, Self::SouthWest],
+        }
+    }
 }
 
 pub fn generate_pawn_lookup() -> [[Bitboard; 64]; 2] {
@@ -250,6 +256,7 @@ impl Bitboard {
 
     pub const RANK_1: Self = Self::RANKS[0];
     pub const RANK_8: Self = Self::RANKS[7];
+    pub const PAWN_PROMOTION_MASK: Self = Bitboard(Self::RANK_8.0 | Self::RANK_1.0);
 
     const PAWN_INITIAL: Self = Self(0x00_FF_00_00_00_00_FF_00);
 
@@ -261,7 +268,8 @@ impl Bitboard {
     pub fn move_bit(&mut self, from: Self, to: Self) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(*self & from, from);
+            assert_eq!(from.count(), 1);
+            assert_eq!(to.count(), 1);
         }
         *self ^= from;
         *self |= to;
@@ -412,7 +420,7 @@ impl LowerHex for Bitboard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BitboardError {
     InvalidSingleSquare(String),
     NoPieceAtSquare(Bitboard),
@@ -420,6 +428,8 @@ pub enum BitboardError {
 }
 
 use std::num::TryFromIntError;
+
+use crate::piece::Color;
 
 impl Display for BitboardError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

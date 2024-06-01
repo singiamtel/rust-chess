@@ -30,7 +30,7 @@ impl BitboardDisplay for Bitboard {
         #[cfg(debug_assertions)]
         {
             assert!(
-                bitboard.0.count_ones() == 1,
+                bitboard.count() == 1,
                 "Bitboard is not a single square: {algebraic} {bitboard}"
             );
         }
@@ -38,7 +38,7 @@ impl BitboardDisplay for Bitboard {
     }
 
     fn to_algebraic(&self) -> Result<String, BitboardError> {
-        if !self.0.count_ones() == 1 {
+        if !self.count() == 1 {
             return Err(BitboardError::InvalidSingleSquare(self.0.to_string()));
         }
         let file = u8::try_from(self.0.trailing_zeros() % 8)?;

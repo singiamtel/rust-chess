@@ -1,5 +1,7 @@
 use std::ops::Not;
 
+use crate::bitboard::Bitboard;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Pawn,
@@ -30,6 +32,7 @@ impl Not for Color {
 pub struct Piece {
     pub color: Color,
     pub kind: Kind,
+    pub position: Bitboard,
 }
 
 impl std::fmt::Display for Piece {
@@ -51,8 +54,12 @@ impl std::fmt::Display for Kind {
 }
 
 impl Piece {
-    pub const fn new(color: Color, kind: Kind) -> Self {
-        Self { color, kind }
+    pub const fn new(color: Color, kind: Kind, position: Bitboard) -> Self {
+        Self {
+            color,
+            kind,
+            position,
+        }
     }
 }
 
