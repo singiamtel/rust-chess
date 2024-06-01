@@ -269,7 +269,7 @@ impl Game {
                 if !to.is_empty() && !to.intersects(colors_mask) {
                     // is promotion?
                     let new_move = Move::new(origin_square, to, piece);
-                    if to.intersects(Bitboard::RANK_1 | Bitboard::RANK_8) {
+                    if to.intersects(Bitboard::PAWN_PROMOTION_MASK) {
                         moves.append(&mut new_move.with_promotions());
                     } else {
                         moves.push(new_move);
