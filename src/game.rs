@@ -438,18 +438,11 @@ impl Game {
         } else {
             (self.board.black, self.board.white)
         };
-        if (self.pawn_attacks_lookup.get(color)[king_position]
+        if (self.pawn_attacks_lookup.get(!color)[king_position] // get the other color lookup
             & self.board.pawns
             & opposite_color_mask)
             != Bitboard(0)
         {
-            // println!("Pawn check!");
-            // println!("{:#016x}", self.pawn_attacks_lookup.get(color)[king_position]);
-            // println!("{:#016x}", self.board.pawns);
-            // println!("{:#016x}", opposite_color_mask);
-            // println!("{:#016x}", self.pawn_attacks_lookup.get(color)[king_position]
-            // & self.board.pawns
-            // & opposite_color_mask);
             return true;
         }
         // println!("History: {:}", self.history);

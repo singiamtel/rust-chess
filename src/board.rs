@@ -304,6 +304,10 @@ impl Board {
                         *color_mask,
                         (self.kings & *color_mask).count()
                     );
+                    assert!(
+                        self.king_position.get(piece.color).unwrap() == position.idx(),
+                        "King position out of sync with king"
+                    );
                 }
             }
         }
