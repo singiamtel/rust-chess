@@ -4,14 +4,24 @@
 use std::env;
 use std::error::Error;
 
-use rust_chess::perft::{perft, perft_parallel};
+use rust_chess::perft::{perft, perft_parallel, test_parallelism};
 use rust_chess::Game;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let perft_depth = env::args()
-        .nth(1)
-        .unwrap_or_else(|| String::from("4"))
-        .parse::<u8>()?;
+    const DEFAULT_DEPTH: u8 = 4;
+    color_eyre::install()?;
+
+    let perft_depth = if let Some(depth) = env::args().nth(1) {
+        let perft_depth = depth.parse::<u8>()?;
+        // if we received depth 0, use default
+        if perft_depth == 0 {
+            DEFAULT_DEPTH
+        } else {
+            perft_depth
+        }
+    } else {
+        DEFAULT_DEPTH
+    };
 
     let fen = env::args()
         .nth(2)
@@ -27,6 +37,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let n_moves = perft_parallel(&game, perft_depth, true);
+    // let n_moves = perft(&mut game, perft_depth, true);
+    // test_parallelism();
     println!("\n{n_moves}");
     Ok(())
 }

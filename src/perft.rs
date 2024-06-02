@@ -5,19 +5,18 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
+
     let moves = game.gen_moves();
     let mut all_nodes = 0;
     for m in &moves {
         game.make_move(*m);
-        let nodes = if !game.is_check() {
-            // println!("{m} is not check");
-            perft(game, depth - 1, false)
-        } else {
-            // println!("{m} is check");
+        let nodes = if game.is_check(!game.turn) {
             0
+        } else {
+            perft(game, depth - 1, false)
         };
         game.unmake_move(*m);
-        if is_root {
+        if is_root && nodes > 0 {
             println!("{m} {nodes}");
         }
         all_nodes += nodes;
@@ -36,7 +35,7 @@ pub fn perft_parallel(game: &Game, depth: u8, is_root: bool) -> u64 {
             || game.clone(), // Initialize a clone of the game for each thread
             |game_clone, m| {
                 game_clone.make_move(*m);
-                let nodes = if game_clone.is_check() {
+                let nodes = if game_clone.is_check(game_clone.turn) {
                     0
                 } else {
                     perft(game_clone, depth - 1, false)
@@ -50,6 +49,13 @@ pub fn perft_parallel(game: &Game, depth: u8, is_root: bool) -> u64 {
         )
         .sum();
     all_nodes
+}
+
+pub fn test_parallelism() {
+    println!("Rayon is using {} threads", rayon::current_num_threads());
+    (1..100000).into_par_iter().for_each(|x| {
+        println!("X: {:?} Thread ID: {:?}", x, std::thread::current().id());
+    });
 }
 
 #[cfg(test)]

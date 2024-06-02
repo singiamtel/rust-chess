@@ -208,6 +208,16 @@ impl Board {
             Color::White => &mut self.white,
             Color::Black => &mut self.black,
         };
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                color_mask.intersects(piece.position),
+                "Tried to clear piece that is not on the board. {} {} {}",
+                color_mask,
+                piece.position,
+                piece
+            );
+        }
         color_mask.clear_bit(piece.position);
         match piece.kind {
             Kind::Pawn => self.pawns.clear_bit(piece.position),
@@ -317,6 +327,17 @@ impl Board {
         };
 
         let position = piece.position;
+
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                !color_mask.intersects(piece.position),
+                "Tried to spawn piece that is already on the board. {} {} {}",
+                color_mask,
+                piece.position,
+                piece
+            );
+        }
 
         color_mask.set_bit(position);
         match piece.kind {

@@ -65,6 +65,7 @@ impl Error for MovegenError {}
 pub struct Game {
     pub board: Board,
     pub turn: Color,
+    pub is_in_check: bool,
     pub history: History,
     pub halfmove_clock: u8,
     pub fullmove_number: u16,
@@ -202,6 +203,7 @@ impl Game {
             board,
             turn,
             history: History(vec![]),
+            is_in_check: false,
             halfmove_clock: 0,  // TODO: implement
             fullmove_number: 1, // TODO: implement
             pawn_attacks_lookup,
@@ -403,6 +405,11 @@ impl Game {
                                 // TODO: check if the king is in check during travel
                                 if !rook_destination.intersects(self.board.anything())
                                     && !king_destination.intersects(self.board.anything())
+                                    && !self.is_attacked(
+                                        rook_destination,
+                                        rook_destination.idx(),
+                                        Color::White,
+                                    )
                                 {
                                     let mov = Move::new(origin_square, king_destination, piece)
                                         .with_castling_rights_loss(lost_rights)
@@ -424,6 +431,11 @@ impl Game {
                                 // TODO: check if the king is in check during travel
                                 if !rook_destination.intersects(self.board.anything())
                                     && !king_destination.intersects(self.board.anything())
+                                    && !self.is_attacked(
+                                        rook_destination,
+                                        rook_destination.idx(),
+                                        Color::Black,
+                                    )
                                 {
                                     let mov = Move::new(origin_square, king_destination, piece)
                                         .with_castling_rights_loss(lost_rights)
@@ -485,13 +497,14 @@ impl Game {
         }
     }
 
-    pub fn is_attacked(&mut self, square: Bitboard, idx: usize, color: Color) -> bool {
+    pub fn is_attacked(&self, square: Bitboard, idx: usize, color: Color) -> bool {
         // let color = !self.turn; // We want to check if the last move was a self-check
-        let (color_mask, opposite_color_mask) = if color == Color::White {
-            (self.board.white, self.board.black)
-        } else {
-            (self.board.black, self.board.white)
-        };
+        // let (color_mask, opposite_color_mask) = if color == Color::White {
+        //     (self.board.white, self.board.black)
+        // } else {
+        //     (self.board.black, self.board.white)
+        // };
+        let opposite_color_mask = self.board.get_color_mask(!color);
         if (self.pawn_attacks_lookup.get(!color)[idx] // get the other color lookup
             & self.board.pawns
             & opposite_color_mask)
@@ -541,7 +554,7 @@ impl Game {
             Direction::SouthEast,
             Direction::SouthWest,
         ] {
-            let piece = self.slide_until_blocked(self.board.kings & color_mask, &direction, color);
+            let piece = self.slide_until_blocked(square, &direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Bishop => {
@@ -555,14 +568,14 @@ impl Game {
         false
     }
 
-    pub fn is_check(&mut self) -> bool {
-        let king_position = self.king_position(!self.turn);
+    pub fn is_check(&mut self, color: Color) -> bool {
+        let king_position = self.king_position(color);
         let square = Bitboard(1 << king_position);
         #[cfg(debug_assertions)]
         {
             assert!(square.count() == 1);
         }
-        self.is_attacked(square, king_position, !self.turn)
+        self.is_attacked(square, king_position, color)
     }
 
     pub fn gen_moves(&self) -> Vec<Move> {
@@ -593,10 +606,26 @@ impl Game {
 
     pub fn make_move(&mut self, mov: Move) {
         self.board.move_piece(mov);
-        self.turn = !self.turn;
+
         self.history.push(mov);
         self.fullmove_number += 1;
         self.halfmove_clock += 1;
+        self.is_in_check = self.is_check(self.turn);
+        if self.is_in_check {
+            // remove castling rights to the color in check
+            // println!("{} is in check, removing castling rights ({})", self.turn, mov);
+            match !self.turn {
+                Color::White => self
+                    .board
+                    .castling
+                    .set_castling_right(CastlingRights::WHITE_BOTH, false),
+                Color::Black => self
+                    .board
+                    .castling
+                    .set_castling_right(CastlingRights::BLACK_BOTH, false),
+            }
+        }
+        self.turn = !self.turn;
     }
 
     pub fn unmake_move(&mut self, mov: Move) {
@@ -612,9 +641,9 @@ impl Game {
         if let Some(castle_move) = mov.castle_move {
             // TODO: move it instead
             self.board
-                .clear_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.0));
+                .clear_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.1));
             self.board
-                .spawn_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.1));
+                .spawn_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.0));
             self.board.castling.toggle_right(mov.castling_rights_change);
         }
 
