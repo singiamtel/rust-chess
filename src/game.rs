@@ -110,7 +110,7 @@ impl Game {
         let mut rank = 7;
         let mut file = 0;
         let splitted_vec = fen.split(' ').collect::<Vec<&str>>();
-        assert_eq!(splitted_vec.len(), 6);
+        assert!(splitted_vec.len() >= 4); // halfmove clock, fullmove number can be omitted
         let mut splitted_iter = splitted_vec.into_iter();
         let pieces = splitted_iter.next().map_or_else(
             || {
@@ -195,6 +195,16 @@ impl Game {
             Some(Bitboard::from_algebraic(en_passant_str)?)
         };
 
+        let halfmove_clock = match splitted_iter.next() {
+            Some(halfmove_clock) => halfmove_clock.parse().unwrap(),
+            None => 0,
+        };
+
+        let fullmove_number = match splitted_iter.next() {
+            Some(fullmove_number) => fullmove_number.parse().unwrap(),
+            None => 1,
+        };
+
         let _pawn_attacks_lookup = generate_pawn_lookup();
         let knight_attacks_lookup = generate_knight_lookup();
         let pawn_attacks_lookup =
@@ -204,8 +214,8 @@ impl Game {
             turn,
             history: History(vec![]),
             is_in_check: false,
-            halfmove_clock: 0,  // TODO: implement
-            fullmove_number: 1, // TODO: implement
+            halfmove_clock,
+            fullmove_number,
             pawn_attacks_lookup,
             knight_attacks_lookup,
         })
@@ -285,7 +295,7 @@ impl Game {
                             origin_square.south().south()
                         };
 
-                        if new_to != Bitboard(0) && (new_to & colors_mask) == Bitboard(0) {
+                        if !new_to.is_empty() && !new_to.intersects(colors_mask) {
                             let mov = Move::new(origin_square, new_to, piece).with_en_passant(to);
                             // println!("Move vulnerable to en passant: {} {}", mov, to.to_algebraic().unwrap());
                             moves.push(mov);
@@ -370,7 +380,6 @@ impl Game {
                 }
                 moves
             }
-            // TODO: implement castling
             Kind::King => {
                 let mut moves: Vec<Move> = vec![];
                 let lost_rights = match piece.color {
