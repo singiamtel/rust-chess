@@ -321,6 +321,17 @@ impl Board {
 
     pub fn unmove_piece(&mut self, mov: Move) {
         self.move_piece(Move::new(mov.to, mov.from, mov.what));
+        // restore old piece
+        if let Some(captured_piece) = mov.capture {
+            self.spawn_piece(captured_piece);
+        }
+
+        if let Some(castle_move) = mov.castle_move {
+            // TODO: move it instead
+            self.clear_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.1));
+            self.spawn_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.0));
+            self.castling.toggle_right(mov.castling_rights_change);
+        }
     }
 
     pub fn spawn_piece(&mut self, piece: Piece) {

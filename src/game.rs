@@ -642,20 +642,6 @@ impl Game {
         self.history.pop().expect("No moves to undo");
         self.board.unmove_piece(mov);
         self.turn = !self.turn;
-        // restore old piece
-        if let Some(captured_piece) = mov.capture {
-            self.board.spawn_piece(captured_piece);
-        }
-
-        if let Some(castle_move) = mov.castle_move {
-            // TODO: move it instead
-            self.board
-                .clear_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.1));
-            self.board
-                .spawn_piece(Piece::new(mov.what.color, Kind::Rook, castle_move.0));
-            self.board.castling.toggle_right(mov.castling_rights_change);
-        }
-
         self.fullmove_number -= 1;
         self.halfmove_clock -= 1;
     }
