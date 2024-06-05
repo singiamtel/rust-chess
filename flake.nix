@@ -136,9 +136,8 @@
             pkgs.stockfish
             pkgs.difftastic
             pkgs.bacon
-            pkgs.linuxKernel.packages.linux_6_6.perf
             (pkgs.python3.withPackages (p: [ p.chess ]))
-          ];
+          ]++ lib.optional (pkgs.stdenv.isLinux) pkgs.linuxKernel.packages.linux_6_6.perf;
           shellHook = ''
             echo "Welcome to the development shell for ${my-crate.name}!";
             export PATH="$PATH:./helpers:$HOME/.cargo/bin";
