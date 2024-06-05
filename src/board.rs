@@ -114,6 +114,8 @@ pub struct Board {
     pub king_position: OnePerColor<Option<usize>>,
     pub en_passant: Option<Bitboard>,
 
+    pub attacked_squares: Bitboard,
+
     pub castling: CastlingRights,
 }
 
@@ -129,6 +131,7 @@ impl Board {
         black: Bitboard(0),
         king_position: OnePerColor::new(None, None),
         en_passant: None,
+        attacked_squares: Bitboard(0),
         castling: CastlingRights(0),
     };
     pub fn get_color(self, square: Bitboard) -> Option<Color> {
