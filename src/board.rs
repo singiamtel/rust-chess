@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter, LowerHex, Result};
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, BitXorAssign, Not};
 
 use crate::bitboard::display::BitboardDisplay;
+use crate::bitboard::{generate_knight_lookup, generate_pawn_lookup};
 use crate::{
     bitboard::{Bitboard, DirectionalShift},
     piece::{to_letter, Color, Kind, Piece},
@@ -111,29 +112,50 @@ pub struct Board {
     pub white: Bitboard,
     pub black: Bitboard,
 
+    pub turn: Color,
+
     pub king_position: OnePerColor<Option<usize>>,
     pub en_passant: Option<Bitboard>,
 
     pub attacked_squares: Bitboard,
+    pub pawn_attacks_lookup: OnePerColor<[Bitboard; 64]>,
+    pub knight_attacks_lookup: [Bitboard; 64],
 
     pub castling: CastlingRights,
 }
 
 impl Board {
-    pub const DEFAULT: Self = Self {
-        pawns: Bitboard(0),
-        knights: Bitboard(0),
-        bishops: Bitboard(0),
-        rooks: Bitboard(0),
-        queens: Bitboard(0),
-        kings: Bitboard(0),
-        white: Bitboard(0),
-        black: Bitboard(0),
-        king_position: OnePerColor::new(None, None),
-        en_passant: None,
-        attacked_squares: Bitboard(0),
-        castling: CastlingRights(0),
-    };
+    pub fn new() -> Self {
+        let pawn_attacks_lookup = generate_pawn_lookup();
+        let knight_attacks_lookup = generate_knight_lookup();
+        let pawn_attacks_lookup = OnePerColor::new(pawn_attacks_lookup[0], pawn_attacks_lookup[1]);
+        Self {
+            pawns: Bitboard(0),
+            knights: Bitboard(0),
+            bishops: Bitboard(0),
+            rooks: Bitboard(0),
+            queens: Bitboard(0),
+            kings: Bitboard(0),
+            white: Bitboard(0),
+            black: Bitboard(0),
+            king_position: OnePerColor::new(None, None),
+            en_passant: None,
+            attacked_squares: Bitboard(0),
+            pawn_attacks_lookup,
+            knight_attacks_lookup,
+            castling: CastlingRights(0),
+
+            turn: Color::White,
+        }
+    }
+
+    pub fn king_position(&self, color: Color) -> usize {
+        match color {
+            Color::White => self.king_position.white.expect("King position not set"),
+            Color::Black => self.king_position.black.expect("King position not set"),
+        }
+    }
+
     pub fn get_color(self, square: Bitboard) -> Option<Color> {
         if !(square & self.white).is_empty() {
             Some(Color::White)
@@ -238,6 +260,14 @@ impl Board {
         }
     }
 
+    fn calculate_attacked_squares(&self) -> Bitboard {
+        Bitboard(0)
+    }
+
+    pub fn flip_turn(&mut self) {
+        self.turn = !self.turn;
+    }
+
     pub fn move_piece(&mut self, mov: Move) {
         #[cfg(debug_assertions)]
         {
@@ -265,8 +295,6 @@ impl Board {
         if let Some(capture) = mov.capture {
             self.clear_piece(capture);
         }
-
-        // TODO: handle castling
 
         let color_mask = match piece.color {
             Color::White => &mut self.white,
@@ -300,6 +328,8 @@ impl Board {
             }
         }
         color_mask.move_bit(mov.from, mov.to);
+
+        self.attacked_squares = self.calculate_attacked_squares();
 
         #[cfg(debug_assertions)]
         {
@@ -399,6 +429,12 @@ impl Board {
             Color::White => self.white,
             Color::Black => self.black,
         }
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

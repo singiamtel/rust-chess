@@ -1,3 +1,4 @@
+use crate::move_generation::Movegen;
 use crate::Game;
 use rayon::prelude::*;
 
@@ -6,11 +7,11 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
         return 1;
     }
 
-    let moves = game.gen_moves();
+    let moves = game.board.gen_moves().unwrap();
     let mut all_nodes = 0;
     for m in &moves {
         game.make_move(*m);
-        let nodes = if game.is_check(!game.turn) {
+        let nodes = if game.board.is_check(!game.board.turn) {
             0
         } else {
             perft(game, depth - 1, false)
@@ -28,14 +29,14 @@ pub fn perft_parallel(game: &Game, depth: u8, is_root: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = game.gen_moves();
+    let moves = game.board.gen_moves().unwrap();
     let all_nodes: u64 = moves
         .par_iter()
         .map_init(
             || game.clone(), // Initialize a clone of the game for each thread
             |game_clone, m| {
                 game_clone.make_move(*m);
-                let nodes = if game_clone.is_check(game_clone.turn) {
+                let nodes = if game_clone.board.is_check(game_clone.board.turn) {
                     0
                 } else {
                     perft(game_clone, depth - 1, false)
