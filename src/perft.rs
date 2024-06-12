@@ -11,6 +11,7 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     let mut all_nodes = 0;
     for m in &moves {
         game.make_move(*m);
+        // println!("{m} {}", game.board);
         let nodes = if game.board.is_check(!game.board.turn) {
             0
         } else {

@@ -16,7 +16,7 @@ pub trait Movegen {
         piece: Piece,
         origin_square: Bitboard,
         current_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
     );
     fn gen_moves(&self) -> Result<Vec<Move>, MovegenError>;
     fn gen_sliding_moves(
@@ -24,13 +24,13 @@ pub trait Movegen {
         moves: &mut Vec<Move>,
         piece: Piece,
         origin_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
     );
     fn gen_moves_from_piece(&self, origin_square: Bitboard) -> Vec<Move>;
     fn slide_until_blocked(
         &self,
         current_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
         color: Color,
     ) -> Option<Piece>;
     fn is_attacked(&self, square: Bitboard, idx: usize, color: Color) -> bool;
@@ -44,7 +44,7 @@ impl Movegen for Board {
         piece: Piece,
         origin_square: Bitboard,
         current_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
     ) {
         let (color_mask, opposite_color_mask) = if piece.color == Color::White {
             (self.white, self.black)
@@ -71,7 +71,7 @@ impl Movegen for Board {
         moves: &mut Vec<Move>,
         piece: Piece,
         origin_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
     ) {
         self.gen_sliding_moves_recursive(moves, piece, origin_square, origin_square, direction);
     }
@@ -132,7 +132,7 @@ impl Movegen for Board {
                 //     );
                 // }
                 for to in Direction::pawn_captures(self.turn) {
-                    let to = origin_square.shift(&to);
+                    let to = origin_square.shift(to);
                     if to.is_empty() {
                         continue;
                     }
@@ -163,7 +163,7 @@ impl Movegen for Board {
                 let mut moves: Vec<Move> = vec![];
 
                 for &knight_move in &Direction::KNIGHT_MOVES {
-                    let to = origin_square.shift(&knight_move);
+                    let to = origin_square.shift(knight_move);
                     if !to.is_empty() && !to.intersects(current_turn_mask) {
                         let mut new_move = Move::new(origin_square, to, piece);
                         if to.intersects(opposite_color_mask) {
@@ -177,21 +177,21 @@ impl Movegen for Board {
             }
             Kind::Bishop => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in &Direction::DIAGONAL_MOVES {
+                for direction in Direction::DIAGONAL_MOVES {
                     self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
             }
             Kind::Rook => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in &Direction::STRAIGHT_MOVES {
+                for direction in Direction::STRAIGHT_MOVES {
                     self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
             }
             Kind::Queen => {
                 let mut moves: Vec<Move> = vec![];
-                for direction in &Direction::SLIDING_MOVES {
+                for direction in Direction::SLIDING_MOVES {
                     self.gen_sliding_moves(&mut moves, piece, origin_square, direction);
                 }
                 moves
@@ -202,7 +202,7 @@ impl Movegen for Board {
                     Color::White => CastlingRights::WHITE_BOTH,
                     Color::Black => CastlingRights::BLACK_BOTH,
                 };
-                for direction in &Direction::SLIDING_MOVES {
+                for direction in Direction::SLIDING_MOVES {
                     let to = origin_square.shift(direction);
                     if !to.is_empty() && !to.intersects(current_turn_mask) {
                         let mut new_move = Move::new(origin_square, to, piece)
@@ -279,7 +279,7 @@ impl Movegen for Board {
     fn slide_until_blocked(
         &self,
         current_square: Bitboard,
-        direction: &Direction,
+        direction: Direction,
         color: Color,
     ) -> Option<Piece> {
         let (color_mask, opposite_color_mask) = if color == Color::White {
@@ -340,7 +340,7 @@ impl Movegen for Board {
             Direction::West,
         ] {
             // self.gen_sliding_moves(&mut moves, piece, origin_square, &direction);
-            let piece = self.slide_until_blocked(square, &direction, color);
+            let piece = self.slide_until_blocked(square, direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Rook => {
@@ -360,7 +360,7 @@ impl Movegen for Board {
             Direction::SouthEast,
             Direction::SouthWest,
         ] {
-            let piece = self.slide_until_blocked(square, &direction, color);
+            let piece = self.slide_until_blocked(square, direction, color);
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Bishop => {

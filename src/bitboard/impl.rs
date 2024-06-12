@@ -194,7 +194,7 @@ pub trait DirectionalShift:
     fn so_so_we(self) -> Self {
         (self & Self::NOT_FILE_A) >> 17
     }
-    fn shift(self, direction: &Direction) -> Self {
+    fn shift(self, direction: Direction) -> Self {
         match direction {
             Direction::North => self.north(),
             Direction::South => self.south(),
@@ -395,6 +395,20 @@ impl LowerHex for Bitboard {
         let val = self.0;
 
         LowerHex::fmt(&val, f)
+    }
+}
+
+// TODO: This is slow as fuck
+impl Iterator for Bitboard {
+    type Item = Bitboard;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 0 {
+            return None;
+        }
+        let lsb = self.0.trailing_zeros();
+        self.0 &= self.0 - 1;
+        Some(Bitboard(1 << lsb))
     }
 }
 

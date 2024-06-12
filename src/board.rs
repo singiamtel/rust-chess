@@ -1,8 +1,12 @@
+#![allow(dead_code, unused_imports)]
+
 use std::fmt::{Display, Formatter, LowerHex, Result};
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, BitXorAssign, Not};
 
 use crate::bitboard::display::BitboardDisplay;
-use crate::bitboard::{generate_knight_lookup, generate_pawn_lookup};
+use crate::bitboard::{generate_knight_lookup, generate_pawn_lookup, Direction};
+use crate::move_generation::Movegen;
+
 use crate::{
     bitboard::{Bitboard, DirectionalShift},
     piece::{to_letter, Color, Kind, Piece},
@@ -260,8 +264,71 @@ impl Board {
         }
     }
 
-    fn calculate_attacked_squares(&self) -> Bitboard {
+    fn get_pieces(&self, kind: Kind, color: Color) -> Bitboard {
+        let pieces = match kind {
+            Kind::Pawn => self.pawns,
+            Kind::Knight => self.knights,
+            Kind::Bishop => self.bishops,
+            Kind::Rook => self.rooks,
+            Kind::Queen => self.queens,
+            Kind::King => self.kings,
+        };
+
+        let color_mask = match color {
+            Color::White => self.white,
+            Color::Black => self.black,
+        };
+
+        pieces & color_mask
+    }
+
+    fn generate_pawn_attacks(&self, color: Color) -> Bitboard {
+        let mut attacks = Bitboard(0);
+        let pawns = self.get_pieces(Kind::Pawn, !color);
+        // find all pawns
+        for pawn in pawns {
+            let pawn_idx = pawn.idx();
+            let pawn_attack = self.pawn_attacks_lookup.get(color)[pawn_idx];
+            attacks |= pawn_attack;
+        }
+        attacks
+    }
+
+    fn generate_knight_attacks(&self, color: Color) -> Bitboard {
+        let mut attacks = Bitboard(0);
+        let knights = self.get_pieces(Kind::Knight, !color);
+        for knight in knights {
+            let knight_idx = knight.idx();
+            let knight_attack = self.knight_attacks_lookup[knight_idx];
+            attacks |= knight_attack;
+        }
+        attacks
+    }
+
+    fn generate_bishop_attacks(&self, _color: Color) -> Bitboard {
+        // let moves: Vec<Move> = Vec::new();
+        // let bishop = self.get_piece(Kind::Bishop, !color);
+        // self.gen_sliding_moves(&mut moves, bishop, bishop, Direction::NorthEast);
+        // self.gen_sliding_moves(&mut moves, bishop, bishop, Direction::NorthWest);
+        // self.gen_sliding_moves(&mut moves, bishop, bishop, Direction::SouthEast);
+        // self.gen_sliding_moves(&mut moves, bishop, bishop, Direction::SouthWest);
+        // moves
         Bitboard(0)
+    }
+
+    fn calculate_attacked_squares(&self) -> Bitboard {
+        let mut attacks = Bitboard(0);
+        // pawns
+        attacks |= self.generate_pawn_attacks(self.turn);
+
+        // knights
+        attacks |= self.generate_knight_attacks(self.turn);
+
+        // bishops
+        // rooks
+        // queens
+        // king
+        attacks
     }
 
     pub fn flip_turn(&mut self) {
@@ -329,7 +396,7 @@ impl Board {
         }
         color_mask.move_bit(mov.from, mov.to);
 
-        self.attacked_squares = self.calculate_attacked_squares();
+        // self.attacked_squares = self.calculate_attacked_squares();
 
         #[cfg(debug_assertions)]
         {
@@ -445,7 +512,18 @@ impl Display for Board {
             for file in 0..8 {
                 let square = Bitboard::from_square(file, rank);
                 let piece = self.get_piece(square);
-                board += &format!("{} ", to_letter(piece));
+                match piece {
+                    Some(piece) => {
+                        board += &format!("{} ", to_letter(Some(piece)));
+                    }
+                    None => {
+                        if square & self.attacked_squares != Bitboard(0) {
+                            board += "x ";
+                        } else {
+                            board += ". ";
+                        }
+                    }
+                }
             }
             board += "\n";
         }
