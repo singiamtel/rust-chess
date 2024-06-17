@@ -525,6 +525,16 @@ impl Default for Board {
     }
 }
 
+pub fn colorize(letter: char) -> String {
+    // if check
+    let answer: String = if letter.is_ascii_uppercase() {
+        format!("\x1b[0;31m{}\x1b[0m", letter)
+    } else {
+        format!("\x1b[0;34m{}\x1b[0m", letter)
+    };
+    answer
+}
+
 impl Display for Board {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut board = String::new();
@@ -534,7 +544,7 @@ impl Display for Board {
                 let piece = self.get_piece(square);
                 match piece {
                     Some(piece) => {
-                        board += &format!("{} ", to_letter(Some(piece)));
+                        board += &format!("{} ", colorize(to_letter(Some(piece))));
                     }
                     None => {
                         if square & self.attacked_squares != Bitboard(0) {
