@@ -147,7 +147,7 @@ impl Movegen for Board {
                 .filter(|square| self.is_attacked(**square, square.idx(), color))
                 .collect::<Vec<&Bitboard>>();
 
-            if !any_square_attacked.is_empty() && !any_square_full {
+            if any_square_attacked.is_empty() && !any_square_full {
                 let mov = Move::new(origin_square, travel_squares[1], piece)
                     .with_castling_rights_loss(lost_rights)
                     .with_castle_move((relevant_squares[0], relevant_squares[3]));
@@ -352,6 +352,7 @@ impl Movegen for Board {
             & opposite_color_mask)
             != Bitboard(0)
         {
+            // eprintln!("{} Pawn check!\n{}", !self.turn, self);
             return true;
         }
         // println!("Side checked: {}", color);
@@ -360,7 +361,7 @@ impl Movegen for Board {
         // println!("Knight attacks: {}", self.knight_attacks_lookup[idx]);
         // println!("Knights: {}", self.knights & opposite_color_mask);
         if (self.knight_attacks_lookup[idx] & (self.knights & opposite_color_mask)) != Bitboard(0) {
-            // println!("Knight check!");
+            // eprintln!("{} Knight check!\n{}", !self.turn, self);
             // // print all previous moves
             return true;
         }
@@ -377,10 +378,7 @@ impl Movegen for Board {
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Rook => {
-                        // println!("Queen or Rook check!");
-                        // println!("{:#016x}", opposite_color_mask);
-                        // println!("{:#016x}", self.board.kings & color_mask);
-                        // println!("{}", piece);
+                        // eprintln!("{} Rook or queen check!\n{}", !self.turn, self);
                         return true;
                     }
                     _ => {}
@@ -397,7 +395,7 @@ impl Movegen for Board {
             if let Some(piece) = piece {
                 match piece.kind {
                     Kind::Queen | Kind::Bishop => {
-                        // println!("Queen or Bishop check!");
+                        // eprintln!("{}, Rook or bishop check!\n{}", !self.turn, self);
                         return true;
                     }
                     _ => {}

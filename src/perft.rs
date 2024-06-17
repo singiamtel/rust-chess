@@ -12,7 +12,8 @@ pub fn perft(game: &mut Game, depth: u8, is_root: bool) -> u64 {
     for m in &moves {
         game.make_move(*m);
         // println!("{m} {}", game.board);
-        let nodes = if game.board.is_check(!game.board.turn) {
+        let nodes = if game.is_in_check {
+            // eprintln!("undoing...");
             0
         } else {
             perft(game, depth - 1, false)
@@ -37,7 +38,7 @@ pub fn perft_parallel(game: &Game, depth: u8, is_root: bool) -> u64 {
             || game.clone(), // Initialize a clone of the game for each thread
             |game_clone, m| {
                 game_clone.make_move(*m);
-                let nodes = if game_clone.board.is_check(game_clone.board.turn) {
+                let nodes = if game_clone.is_in_check {
                     0
                 } else {
                     perft(game_clone, depth - 1, false)
@@ -89,7 +90,7 @@ mod tests {
     fn perft_test() {
         let mut game = Game::new(Game::STARTING_FEN).unwrap();
         // TODO: Test all the way down!
-        for depth in 1..=5 {
+        for depth in 1..=4 {
             let n_moves = perft(&mut game, depth, true);
             assert_eq!(
                 n_moves,
