@@ -89,7 +89,7 @@ mod tests {
     fn perft_test() {
         let mut game = Game::new(Game::STARTING_FEN).unwrap();
         // TODO: Test all the way down!
-        for depth in 1..=4 {
+        for depth in 1..=5 {
             let n_moves = perft(&mut game, depth, true);
             assert_eq!(
                 n_moves,

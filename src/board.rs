@@ -61,6 +61,25 @@ impl CastlingRights {
     pub fn get_castling_right(self, right: Self) -> bool {
         self & right != Self::NONE
     }
+
+    #[inline(always)]
+    pub const fn white_queenside_squares() -> Bitboard {
+        Bitboard(0xe)
+    }
+
+    #[inline(always)]
+    pub const fn white_kingside_squares() -> Bitboard {
+        Bitboard(0x60)
+    }
+    #[inline(always)]
+    pub const fn black_queenside_squares() -> Bitboard {
+        Bitboard(0xe00000000000000)
+    }
+
+    #[inline(always)]
+    pub const fn black_kingside_squares() -> Bitboard {
+        Bitboard(0x6000000000000000)
+    }
 }
 
 impl BitAnd<CastlingRights> for CastlingRights {
@@ -170,6 +189,7 @@ impl Board {
         }
     }
 
+    #[inline(always)]
     pub fn anything(&self) -> Bitboard {
         self.black | self.white
     }
@@ -443,8 +463,8 @@ impl Board {
         {
             assert!(
                 !color_mask.intersects(piece.position),
-                "Tried to spawn piece that is already on the board. {} {} {}",
-                color_mask,
+                "Tried to spawn a piece on a busy square\n {} {} {}",
+                self,
                 piece.position,
                 piece
             );

@@ -1,5 +1,5 @@
 use crate::{
-    bitboard::{Bitboard, Direction},
+    bitboard::{display::BitboardDisplay, Bitboard, Direction},
     board::{Board, CastlingRights},
     piece::{Color, Kind, Piece},
     r#move::Move,
@@ -218,6 +218,7 @@ impl Movegen for Board {
                     // TODO: Long castle
                     match piece.color {
                         Color::White => {
+                            // Short castle
                             if self
                                 .castling
                                 .get_castling_right(CastlingRights::WHITE_KINGSIDE)
@@ -241,8 +242,50 @@ impl Movegen for Board {
                                     moves.push(mov);
                                 }
                             }
+                            // Long castle
+                            if self
+                                .castling
+                                .get_castling_right(CastlingRights::WHITE_QUEENSIDE)
+                            {
+                                let travel_squares = [
+                                    Bitboard::from_algebraic("b1").unwrap(),
+                                    Bitboard::from_algebraic("c1").unwrap(),
+                                    Bitboard::from_algebraic("d1").unwrap(),
+                                ];
+
+                                // only last two
+                                let safe_squares = &travel_squares[1..];
+
+                                let any_square_full = travel_squares
+                                    .iter()
+                                    .map(|square| square.intersects(self.anything()))
+                                    .collect::<Vec<bool>>()
+                                    .contains(&true);
+                                let any_square_attacked = safe_squares
+                                    .iter()
+                                    .map(|square| {
+                                        self.is_attacked(*square, square.idx(), Color::White)
+                                    })
+                                    .collect::<Vec<bool>>()
+                                    .contains(&true);
+
+                                if !any_square_attacked && !any_square_full {
+                                    let mov = Move::new(
+                                        origin_square,
+                                        Bitboard::from_algebraic("c1").unwrap(),
+                                        piece,
+                                    )
+                                    .with_castling_rights_loss(lost_rights)
+                                    .with_castle_move((
+                                        Bitboard::from_algebraic("a1").unwrap(),
+                                        Bitboard::from_algebraic("d1").unwrap(),
+                                    ));
+                                    moves.push(mov);
+                                }
+                            }
                         }
                         Color::Black => {
+                            // Short castle
                             if self
                                 .castling
                                 .get_castling_right(CastlingRights::BLACK_KINGSIDE)
@@ -263,6 +306,47 @@ impl Movegen for Board {
                                     let mov = Move::new(origin_square, king_destination, piece)
                                         .with_castling_rights_loss(lost_rights)
                                         .with_castle_move((rook_origin, rook_destination));
+                                    moves.push(mov);
+                                }
+                            }
+
+                            if self
+                                .castling
+                                .get_castling_right(CastlingRights::WHITE_QUEENSIDE)
+                            {
+                                let travel_squares = [
+                                    Bitboard::from_algebraic("b8").unwrap(),
+                                    Bitboard::from_algebraic("c8").unwrap(),
+                                    Bitboard::from_algebraic("d8").unwrap(),
+                                ];
+
+                                // only last two
+                                let safe_squares = &travel_squares[1..];
+
+                                let any_square_full = travel_squares
+                                    .iter()
+                                    .map(|square| square.intersects(self.anything()))
+                                    .collect::<Vec<bool>>()
+                                    .contains(&true);
+                                let any_square_attacked = safe_squares
+                                    .iter()
+                                    .map(|square| {
+                                        self.is_attacked(*square, square.idx(), Color::Black)
+                                    })
+                                    .collect::<Vec<bool>>()
+                                    .contains(&true);
+
+                                if !any_square_attacked && !any_square_full {
+                                    let mov = Move::new(
+                                        origin_square,
+                                        Bitboard::from_algebraic("c8").unwrap(),
+                                        piece,
+                                    )
+                                    .with_castling_rights_loss(lost_rights)
+                                    .with_castle_move((
+                                        Bitboard::from_algebraic("a8").unwrap(),
+                                        Bitboard::from_algebraic("d8").unwrap(),
+                                    ));
                                     moves.push(mov);
                                 }
                             }
