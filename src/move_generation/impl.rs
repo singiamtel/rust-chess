@@ -26,6 +26,13 @@ pub trait Movegen {
         origin_square: Bitboard,
         direction: Direction,
     );
+    fn gen_castling_moves(
+        &self,
+        moves: &mut Vec<Move>,
+        piece: Piece,
+        origin_square: Bitboard,
+        color: Color,
+    );
     fn gen_moves_from_piece(&self, origin_square: Bitboard) -> Vec<Move>;
     fn slide_until_blocked(
         &self,
@@ -74,6 +81,79 @@ impl Movegen for Board {
         direction: Direction,
     ) {
         self.gen_sliding_moves_recursive(moves, piece, origin_square, origin_square, direction);
+    }
+
+    fn gen_castling_moves(
+        &self,
+        moves: &mut Vec<Move>,
+        piece: Piece,
+        origin_square: Bitboard,
+        color: Color,
+    ) {
+        let (short_castling_rights, long_castling_rights, lost_rights) = match color {
+            Color::White => (
+                CastlingRights::WHITE_KINGSIDE,
+                CastlingRights::WHITE_QUEENSIDE,
+                CastlingRights::WHITE_BOTH,
+            ),
+            Color::Black => (
+                CastlingRights::BLACK_KINGSIDE,
+                CastlingRights::BLACK_QUEENSIDE,
+                CastlingRights::BLACK_BOTH,
+            ),
+        };
+        // Short castle
+        if self.castling.get_castling_right(short_castling_rights) {
+            let king_destination = origin_square.east().east();
+            let rook_origin = king_destination.east();
+            let rook_destination = origin_square.east();
+
+            // TODO: check if the king is in check during travel
+            if !rook_destination.intersects(self.anything())
+                && !king_destination.intersects(self.anything())
+                && !self.is_attacked(rook_destination, rook_destination.idx(), color)
+            {
+                let mov = Move::new(origin_square, king_destination, piece)
+                    .with_castling_rights_loss(lost_rights)
+                    .with_castle_move((rook_origin, rook_destination));
+                moves.push(mov);
+            }
+        }
+        // Long castle
+        if self.castling.get_castling_right(long_castling_rights) {
+            let relevant_squares = match color {
+                Color::White => [
+                    Bitboard::from_algebraic("a1").unwrap(),
+                    Bitboard::from_algebraic("b1").unwrap(),
+                    Bitboard::from_algebraic("c1").unwrap(),
+                    Bitboard::from_algebraic("d1").unwrap(),
+                ],
+                Color::Black => [
+                    Bitboard::from_algebraic("a8").unwrap(),
+                    Bitboard::from_algebraic("b8").unwrap(),
+                    Bitboard::from_algebraic("c8").unwrap(),
+                    Bitboard::from_algebraic("d8").unwrap(),
+                ],
+            };
+
+            let travel_squares = &relevant_squares[1..];
+            let safe_squares = &relevant_squares[2..];
+
+            let any_square_full = (travel_squares[0] | travel_squares[1] | travel_squares[2])
+                .intersects(self.anything());
+
+            let any_square_attacked = safe_squares
+                .iter()
+                .filter(|square| self.is_attacked(**square, square.idx(), color))
+                .collect::<Vec<&Bitboard>>();
+
+            if !any_square_attacked.is_empty() && !any_square_full {
+                let mov = Move::new(origin_square, travel_squares[1], piece)
+                    .with_castling_rights_loss(lost_rights)
+                    .with_castle_move((relevant_squares[0], relevant_squares[3]));
+                moves.push(mov);
+            }
+        }
     }
 
     // pseudo-legal moves
@@ -215,145 +295,15 @@ impl Movegen for Board {
                 }
                 // castling
                 if origin_square.intersects(Bitboard::KING_INITIAL) {
-                    // TODO: Long castle
                     match piece.color {
                         Color::White => {
-                            // Short castle
-                            if self
-                                .castling
-                                .get_castling_right(CastlingRights::WHITE_KINGSIDE)
-                            {
-                                let king_destination = origin_square.east().east();
-                                let rook_origin = king_destination.east();
-                                let rook_destination = origin_square.east();
-
-                                // TODO: check if the king is in check during travel
-                                if !rook_destination.intersects(self.anything())
-                                    && !king_destination.intersects(self.anything())
-                                    && !self.is_attacked(
-                                        rook_destination,
-                                        rook_destination.idx(),
-                                        Color::White,
-                                    )
-                                {
-                                    let mov = Move::new(origin_square, king_destination, piece)
-                                        .with_castling_rights_loss(lost_rights)
-                                        .with_castle_move((rook_origin, rook_destination));
-                                    moves.push(mov);
-                                }
-                            }
-                            // Long castle
-                            if self
-                                .castling
-                                .get_castling_right(CastlingRights::WHITE_QUEENSIDE)
-                            {
-                                let travel_squares = [
-                                    Bitboard::from_algebraic("b1").unwrap(),
-                                    Bitboard::from_algebraic("c1").unwrap(),
-                                    Bitboard::from_algebraic("d1").unwrap(),
-                                ];
-
-                                // only last two
-                                let safe_squares = &travel_squares[1..];
-
-                                let any_square_full = travel_squares
-                                    .iter()
-                                    .map(|square| square.intersects(self.anything()))
-                                    .collect::<Vec<bool>>()
-                                    .contains(&true);
-                                let any_square_attacked = safe_squares
-                                    .iter()
-                                    .map(|square| {
-                                        self.is_attacked(*square, square.idx(), Color::White)
-                                    })
-                                    .collect::<Vec<bool>>()
-                                    .contains(&true);
-
-                                if !any_square_attacked && !any_square_full {
-                                    let mov = Move::new(
-                                        origin_square,
-                                        Bitboard::from_algebraic("c1").unwrap(),
-                                        piece,
-                                    )
-                                    .with_castling_rights_loss(lost_rights)
-                                    .with_castle_move((
-                                        Bitboard::from_algebraic("a1").unwrap(),
-                                        Bitboard::from_algebraic("d1").unwrap(),
-                                    ));
-                                    moves.push(mov);
-                                }
-                            }
+                            self.gen_castling_moves(&mut moves, piece, origin_square, Color::White)
                         }
                         Color::Black => {
-                            // Short castle
-                            if self
-                                .castling
-                                .get_castling_right(CastlingRights::BLACK_KINGSIDE)
-                            {
-                                let king_destination = origin_square.east().east();
-                                let rook_origin = king_destination.east();
-                                let rook_destination = origin_square.east();
-
-                                // TODO: check if the king is in check during travel
-                                if !rook_destination.intersects(self.anything())
-                                    && !king_destination.intersects(self.anything())
-                                    && !self.is_attacked(
-                                        rook_destination,
-                                        rook_destination.idx(),
-                                        Color::Black,
-                                    )
-                                {
-                                    let mov = Move::new(origin_square, king_destination, piece)
-                                        .with_castling_rights_loss(lost_rights)
-                                        .with_castle_move((rook_origin, rook_destination));
-                                    moves.push(mov);
-                                }
-                            }
-
-                            if self
-                                .castling
-                                .get_castling_right(CastlingRights::WHITE_QUEENSIDE)
-                            {
-                                let travel_squares = [
-                                    Bitboard::from_algebraic("b8").unwrap(),
-                                    Bitboard::from_algebraic("c8").unwrap(),
-                                    Bitboard::from_algebraic("d8").unwrap(),
-                                ];
-
-                                // only last two
-                                let safe_squares = &travel_squares[1..];
-
-                                let any_square_full = travel_squares
-                                    .iter()
-                                    .map(|square| square.intersects(self.anything()))
-                                    .collect::<Vec<bool>>()
-                                    .contains(&true);
-                                let any_square_attacked = safe_squares
-                                    .iter()
-                                    .map(|square| {
-                                        self.is_attacked(*square, square.idx(), Color::Black)
-                                    })
-                                    .collect::<Vec<bool>>()
-                                    .contains(&true);
-
-                                if !any_square_attacked && !any_square_full {
-                                    let mov = Move::new(
-                                        origin_square,
-                                        Bitboard::from_algebraic("c8").unwrap(),
-                                        piece,
-                                    )
-                                    .with_castling_rights_loss(lost_rights)
-                                    .with_castle_move((
-                                        Bitboard::from_algebraic("a8").unwrap(),
-                                        Bitboard::from_algebraic("d8").unwrap(),
-                                    ));
-                                    moves.push(mov);
-                                }
-                            }
+                            self.gen_castling_moves(&mut moves, piece, origin_square, Color::Black)
                         }
                     }
                 }
-
                 moves
             }
         };
@@ -404,12 +354,11 @@ impl Movegen for Board {
         {
             return true;
         }
-        // println!("History: {:}", self.history);
         // println!("Side checked: {}", color);
-        // println!("Kings: {:#016x}", self.board.kings);
-        // println!("King position: {}", Bitboard(1 << king_position).to_algebraic().unwrap());
-        // println!("Knight attacks: {:#016x}", self.knight_attacks_lookup[king_position]);
-        // println!("Knights: {:#016x}", self.board.knights & opposite_color_mask);
+        // println!("Piece position: {}", idx);
+        // println!("Piece: {}", square);
+        // println!("Knight attacks: {}", self.knight_attacks_lookup[idx]);
+        // println!("Knights: {}", self.knights & opposite_color_mask);
         if (self.knight_attacks_lookup[idx] & (self.knights & opposite_color_mask)) != Bitboard(0) {
             // println!("Knight check!");
             // // print all previous moves
